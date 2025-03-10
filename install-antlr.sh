@@ -47,7 +47,7 @@ unzip *.zip
 mkdir build
 cd build
 cmake ..
-make -j8
+make -j1
 
 cd ../..
 

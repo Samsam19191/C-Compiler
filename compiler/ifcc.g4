@@ -2,12 +2,18 @@ grammar ifcc;
 
 axiom : prog EOF ;
 
-prog : 'int' 'main' '(' ')' '{' return_stmt '}' ;
+prog : 'int' 'main' '(' ')' '{' (assignment)* return_stmt '}' ;
 
-return_stmt: RETURN CONST ';' ;
+assignment : 'int' ID '=' operand ';' ;
 
+operand : CONST | ID ;
+
+return_stmt : RETURN operand ';' ;
+
+// Lexique
 RETURN : 'return' ;
-CONST : [0-9]+ ;
+CONST  : [0-9]+ ;
+ID     : [a-zA-Z][a-zA-Z0-9]* ;
 COMMENT : '/*' .*? '*/' -> skip ;
 DIRECTIVE : '#' .*? '\n' -> skip ;
-WS    : [ \t\r\n] -> channel(HIDDEN);
+WS    : [ \t\r\n]+ -> skip ;
