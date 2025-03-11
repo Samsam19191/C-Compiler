@@ -19,7 +19,7 @@ SymbolTableVisitor::visitAssignment(ifccParser::AssignmentContext *ctx) {
   //           << symbolTable[varName] << "\n";
 
   // Visit the right-hand side of the assignment
-  visit(ctx->operand());
+  visit(ctx->expr());
 
   return 0;
 }

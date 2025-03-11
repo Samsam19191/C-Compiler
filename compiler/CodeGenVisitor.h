@@ -19,6 +19,10 @@ public:
   virtual antlrcpp::Any visitProg(ifccParser::ProgContext *ctx) override;
   antlrcpp::Any visitAssignment(ifccParser::AssignmentContext *ctx) override;
   antlrcpp::Any visitOperand(ifccParser::OperandContext *ctx) override;
+  antlrcpp::Any visitOperandExpr(ifccParser::OperandExprContext *ctx) override;
+  antlrcpp::Any visitMulDiv(ifccParser::MulDivContext *ctx) override;
+  antlrcpp::Any visitAddSub(ifccParser::AddSubContext *ctx) override;
+  antlrcpp::Any visitParens(ifccParser::ParensContext *ctx) override;
 
   virtual antlrcpp::Any
   visitReturn_stmt(ifccParser::Return_stmtContext *ctx) override;

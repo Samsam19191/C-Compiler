@@ -4,11 +4,17 @@ axiom : prog EOF ;
 
 prog : 'int' 'main' '(' ')' '{' (assignment)* return_stmt '}' ;
 
-assignment : 'int' ID '=' operand ';' ;
+assignment : 'int' ID '=' expr ';' ;
+
+expr : expr ('*' | '/') expr   # MulDiv
+     | expr ('+' | '-') expr   # AddSub
+     | '(' expr ')'            # Parens
+     | operand                 # OperandExpr
+     ;
 
 operand : CONST | ID ;
 
-return_stmt : RETURN operand ';' ;
+return_stmt : RETURN expr ';' ;
 
 // Lexique
 RETURN : 'return' ;
