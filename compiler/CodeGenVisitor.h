@@ -2,12 +2,25 @@
 
 
 #include "antlr4-runtime.h"
+#include <unordered_map>
+#include <iostream>
 #include "generated/ifccBaseVisitor.h"
 
 
 class  CodeGenVisitor : public ifccBaseVisitor {
-	public:
-        virtual antlrcpp::Any visitProg(ifccParser::ProgContext *ctx) override ;
-        virtual antlrcpp::Any visitReturn_stmt(ifccParser::Return_stmtContext *ctx) override;
+private:
+  std::unordered_map<std::string, int> symbolTable; // Stores variable offsets
+
+public:
+  void setSymbolTable(const std::unordered_map<std::string, int> &table) {
+    symbolTable = table; // Copy symbol table from SymbolTableVisitor
+  }
+
+  virtual antlrcpp::Any visitProg(ifccParser::ProgContext *ctx) override;
+  antlrcpp::Any visitAssignment(ifccParser::AssignmentContext *ctx) override;
+  antlrcpp::Any visitOperand(ifccParser::OperandContext *ctx) override;
+
+  virtual antlrcpp::Any
+  visitReturn_stmt(ifccParser::Return_stmtContext *ctx) override;
 };
 
