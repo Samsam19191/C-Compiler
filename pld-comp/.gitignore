@@ -1,4 +1,6 @@
 compiler/build
 compiler/generated
-/antlr
+antlr/
 compiler/config.mk
+Sujet.pdf
+install-antlr.sh
