@@ -14,15 +14,17 @@ type : 'int' | 'char' ;
 
 expr : expr op=('*' | '/') expr   # MulDiv
      | expr op=('+' | '-') expr   # AddSub
+     | funcCall                # CallFunction
      | '(' expr ')'            # Parens
      | operand                 # OperandExpr
      ;
+
+funcCall : ID '(' (expr (',' expr)*)? ')' ;
 
 operand : CONSTINT | CONSTCHAR | ID ;
 
 return_stmt : RETURN expr ';' ;
 
-// Lexique
 RETURN : 'return' ;
 CONSTINT  : [0-9]+ ;
 CONSTCHAR : '\'' ( ~['\\] | '\\' . ) '\'' ;
