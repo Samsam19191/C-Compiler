@@ -6,9 +6,11 @@ prog : 'int' 'main' '(' ')' '{' (statement)* return_stmt '}' ;
 
 statement : assignment | declaration ; // Ajouter ici les autres types de statements (if, while, etc.)
 
-declaration : ('int' | 'char') ID (',' ID)* ';' ;
+declaration : type ID (('=' expr)? (',' ID ('=' expr)?)*)? ';' ;
 
-assignment : ('int' | 'char')? ID '=' expr (',' ID '=' expr)* ';' ;
+assignment : ID '=' expr (',' ID '=' expr)* ';' ;
+
+type : 'int' | 'char' ;
 
 expr : expr ('*' | '/') expr   # MulDiv
      | expr ('+' | '-') expr   # AddSub

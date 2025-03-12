@@ -57,9 +57,32 @@ CodeGenVisitor::visitAssignment(ifccParser::AssignmentContext *ctx) {
     }
 
     visit(expr);
+    initializedVariables.insert(varName);
     std::cout << "    movl %eax, " << symbolTable[varName] << "(%rbp)\n";
   }
 
+  return 0;
+}
+
+antlrcpp::Any
+CodeGenVisitor::visitDeclaration(ifccParser::DeclarationContext *ctx) {
+  std::vector<ifccParser::ExprContext *> exprs = ctx->expr();
+  if (exprs.size() > 0) {
+    std::vector<antlr4::tree::TerminalNode *> varNames = ctx->ID();
+    for (int i = 0; i < varNames.size(); i++) {
+      std::string varName = varNames[i]->getText();
+      ifccParser::ExprContext *expr = exprs[i];
+
+      if (symbolTable.find(varName) == symbolTable.end()) {
+        std::cerr << "Error: Undefined variable '" << varName
+                  << "' during code generation.\n";
+        exit(1);
+      }
+
+      visit(expr);
+      std::cout << "    movl %eax, " << symbolTable[varName] << "(%rbp)\n";
+    }
+  }
   return 0;
 }
 
@@ -70,13 +93,17 @@ antlrcpp::Any CodeGenVisitor::visitOperand(ifccParser::OperandContext *ctx) {
   } else if (ctx->ID()) {
     std::string varName = ctx->ID()->getText();
 
-    if (symbolTable.find(varName) == symbolTable.end()) {
-      std::cerr << "Error: Undefined variable '" << varName
+    if (symbolTable.find(varName) == symbolTable.end() ||
+        initializedVariables.find(varName) == initializedVariables.end()) {
+      std::cerr << "Error: Undefined or Uninitialized variable '" << varName
                 << "' during code generation.\n";
       exit(1);
     }
 
     std::cout << "    movl " << symbolTable[varName] << "(%rbp), %eax\n";
+  } else if (ctx->CONSTCHAR()) {
+    char value = ctx->CONSTCHAR()->getText()[1];
+    std::cout << "    movl $" << (int)value << ", %eax\n";
   }
   return 0;
 }
