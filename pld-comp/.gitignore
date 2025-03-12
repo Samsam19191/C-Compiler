@@ -1,5 +1,8 @@
 compiler/build
 compiler/generated
+compiler/exec
+compiler/exec.o
+compiler/exec.s
 antlr/
 compiler/config.mk
 Sujet.pdf
