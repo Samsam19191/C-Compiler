@@ -1,9 +1,13 @@
 compiler/build
 compiler/generated
 compiler/exec
+<<<<<<< HEAD
 compiler/exec.o
 compiler/exec.s
+=======
+compiler/exec.s
+compiler/exec.o
+>>>>>>> a6b343b (wip : gestion Assignment de plusieurs variables)
 antlr/
 compiler/config.mk
-Sujet.pdf
 install-antlr.sh
