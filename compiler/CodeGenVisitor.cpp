@@ -104,39 +104,3 @@ antlrcpp::Any
 CodeGenVisitor::visitOperandExpr(ifccParser::OperandExprContext *ctx) {
   return visit(ctx->operand());
 }
-
-// antlrcpp::Any CodeGenVisitor::visitExpr(ifccParser::ExprContext *ctx) {
-//   if (auto mulDivCtx = dynamic_cast<ifccParser::MulDivContext *>(ctx)) {
-//     visit(mulDivCtx->expr(0));       // Left operand
-//     std::cout << "    pushq %rax\n"; // Save left operand on stack
-//     visit(mulDivCtx->expr(1));       // Right operand
-//     std::cout << "    popq %rcx\n";  // Restore left operand into %rcx
-
-//     if (mulDivCtx->getText().find("*") != std::string::npos) {
-//       std::cout << "    imul %rcx, %rax\n";
-//     } else {
-//       std::cout << "    cqo\n";       // Convert %rax to 64-bit for division
-//       std::cout << "    idiv %rcx\n"; // Signed division: %rax = %rax / %rcx
-//     }
-//   } else if (auto addSubCtx = dynamic_cast<ifccParser::AddSubContext *>(ctx))
-//   {
-//     visit(addSubCtx->expr(0));       // Left operand
-//     std::cout << "    pushq %rax\n"; // Save left operand on stack
-//     visit(addSubCtx->expr(1));       // Right operand
-//     std::cout << "    popq %rcx\n";  // Restore left operand into %rcx
-
-//     if (addSubCtx->getText().find("+") != std::string::npos) {
-//       std::cout << "    add %rcx, %rax\n";
-//     } else {
-//       std::cout << "    sub %rcx, %rax\n";
-//     }
-//   } else if (auto parensCtx = dynamic_cast<ifccParser::ParensContext *>(ctx))
-//   {
-//     visit(parensCtx->expr()); // Evaluate inside parentheses
-//   } else if (auto operandCtx =
-//                  dynamic_cast<ifccParser::OperandExprContext *>(ctx)) {
-//     visit(operandCtx->operand());
-//   }
-
-//   return 0;
-// }
