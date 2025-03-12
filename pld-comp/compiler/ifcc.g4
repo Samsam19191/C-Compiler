@@ -2,9 +2,13 @@ grammar ifcc;
 
 axiom : prog EOF ;
 
-prog : 'int' 'main' '(' ')' '{' (assignment)* return_stmt '}' ;
+prog : 'int' 'main' '(' ')' '{' (statement)* return_stmt '}' ;
 
-assignment : 'int' ID '=' expr ';' ;
+statement : assignment | declaration ; // Ajouter ici les autres types de statements (if, while, etc.)
+
+declaration : ('int' | 'char') ID (',' ID)* ';' ;
+
+assignment : ('int' | 'char')? ID '=' expr (',' ID '=' expr)* ';' ;
 
 expr : expr ('*' | '/') expr   # MulDiv
      | expr ('+' | '-') expr   # AddSub
@@ -12,13 +16,14 @@ expr : expr ('*' | '/') expr   # MulDiv
      | operand                 # OperandExpr
      ;
 
-operand : CONST | ID ;
+operand : CONSTINT | CONSTCHAR | ID ;
 
 return_stmt : RETURN expr ';' ;
 
 // Lexique
 RETURN : 'return' ;
-CONST  : [0-9]+ ;
+CONSTINT  : [0-9]+ ;
+CONSTCHAR : '\'' ( ~['\\] | '\\' . ) '\'' ;
 ID     : [a-zA-Z][a-zA-Z0-9]* ;
 COMMENT : '/*' .*? '*/' -> skip ;
 DIRECTIVE : '#' .*? '\n' -> skip ;

@@ -15,6 +15,7 @@ private:
 
 public:
   antlrcpp::Any visitAssignment(ifccParser::AssignmentContext *ctx) override;
+  antlrcpp::Any visitOperandExpr(ifccParser::OperandExprContext *ctx) override;
   antlrcpp::Any visitOperand(ifccParser::OperandContext *ctx) override;
   void checkUnusedVariables();
   std::unordered_map<std::string, int> getSymbolTable() { return symbolTable; }

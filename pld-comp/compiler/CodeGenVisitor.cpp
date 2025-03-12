@@ -7,8 +7,8 @@ antlrcpp::Any CodeGenVisitor::visitProg(ifccParser::ProgContext *ctx) {
   std::cout << "    movq %rsp, %rbp \n";
 
   // Visit assignments
-  for (auto assignment : ctx->assignment()) {
-    visit(assignment);
+  for (auto statement : ctx->statement()) {
+    visit(statement);
   }
 
   this->visit(ctx->return_stmt());
@@ -20,36 +20,52 @@ antlrcpp::Any CodeGenVisitor::visitProg(ifccParser::ProgContext *ctx) {
 }
 
 antlrcpp::Any
+CodeGenVisitor::visitStatement(ifccParser::StatementContext *ctx) {
+  if(ctx->declaration()) {
+    return visit(ctx->declaration());
+  } else if(ctx->assignment()) {
+    return visit(ctx->assignment());
+  }
+  
+  return 0;
+}
+
+antlrcpp::Any
 CodeGenVisitor::visitReturn_stmt(ifccParser::Return_stmtContext *ctx) {
   // visit(ctx->operand());
   visit(ctx->expr());
-  // int retval = stoi(ctx->CONST()->getText());
+  // int retval = stoi(ctx->CONSTINT()->getText());
 
-  // std::cout << "    movl $" << retval << ", %eax\n";
+  // std::cout << "    movl $" << retval << ", %eax\n"; 
 
   return 0;
 }
 
 antlrcpp::Any
 CodeGenVisitor::visitAssignment(ifccParser::AssignmentContext *ctx) {
-  std::string varName = ctx->ID()->getText();
+  const std::vector<antlr4::tree::TerminalNode*>& varNames = ctx->ID();
+  const std::vector<ifccParser::ExprContext*>& exprs = ctx->expr();
+  
+  for(int i = 0; i < varNames.size(); i++) {
+    std::string varName = varNames[i]->getText();
+    ifccParser::ExprContext* expr = exprs[i];
 
-  if (symbolTable.find(varName) == symbolTable.end()) {
-    std::cerr << "Error: Undefined variable '" << varName
-              << "' during code generation.\n";
-    exit(1);
+    if (symbolTable.find(varName) == symbolTable.end()) {
+      std::cerr << "Error: Undefined variable '" << varName
+                << "' during code generation.\n";
+      exit(1);
+    }
+
+    visit(expr);
+    std::cout << "    movl %eax, " << symbolTable[varName] << "(%rbp)\n";
   }
-
-  visit(ctx->expr());
-
-  std::cout << "    movl %eax, " << symbolTable[varName] << "(%rbp)\n";
 
   return 0;
 }
 
 antlrcpp::Any CodeGenVisitor::visitOperand(ifccParser::OperandContext *ctx) {
-  if (ctx->CONST()) {
-    int value = std::stoi(ctx->CONST()->getText());
+  if (ctx->CONSTINT()) {
+    int value = std::stoi(ctx->CONSTINT()->getText());
     std::cout << "    movl $" << value << ", %eax\n";
   } else if (ctx->ID()) {
     std::string varName = ctx->ID()->getText();
