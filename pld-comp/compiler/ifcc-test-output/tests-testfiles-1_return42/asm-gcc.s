@@ -1,4 +1,4 @@
-	.file	"ret42aff.c"
+	.file	"input.c"
 	.text
 	.globl	main
 	.type	main, @function
@@ -11,8 +11,7 @@ main:
 	.cfi_offset 6, -16
 	movq	%rsp, %rbp
 	.cfi_def_cfa_register 6
-	movl	$42, -4(%rbp)
-	movl	-4(%rbp), %eax
+	movl	$42, %eax
 	popq	%rbp
 	.cfi_def_cfa 7, 8
 	ret

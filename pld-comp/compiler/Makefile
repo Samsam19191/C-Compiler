@@ -70,3 +70,12 @@ gui:
 clean:
 	rm -rf build generated
 	rm -f ifcc
+	rm exec exec.o exec.s
+
+exec: default
+	./ifcc ../tests/testfiles/8_appelFonction.c > exec.s
+	as -o exec.o exec.s
+	gcc -o exec exec.o
+	./exec
+	echo $$?
+

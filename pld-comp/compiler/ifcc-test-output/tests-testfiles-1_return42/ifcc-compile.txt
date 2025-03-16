@@ -1,0 +1,3 @@
+/bin/sh: 1: /mnt/c/Users/samue/Documents/GitHub/C-Compiler/pld-comp/tests/ifcc-wrapper.sh: not found
+
+exit status: 127
