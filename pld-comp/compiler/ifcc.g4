@@ -23,7 +23,6 @@ funcCall : ID '(' (expr (',' expr)*)? ')' ;
 
 operand : CONSTINT | CONSTCHAR | ID ;
 
-// Retour de fonction
 return_stmt : RETURN expr ';' ;
 
 RETURN : 'return' ;
