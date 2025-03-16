@@ -26,7 +26,6 @@ public:
   antlrcpp::Any visitParens(ifccParser::ParensContext* ctx) override;
   virtual antlrcpp::Any visitReturn_stmt(ifccParser::Return_stmtContext* ctx) override;
 
-  // Nouvelle méthode pour gérer les appels de fonction.
-  // Notez que le contexte est CallExpressionContext (généré par l'étiquette #CallExpression).
-  antlrcpp::Any visitCallExpr(ifccParser::CallExprContext* ctx) override;
+  antlrcpp::Any visitFuncCall(ifccParser::FuncCallContext *ctx) override;
+
 };

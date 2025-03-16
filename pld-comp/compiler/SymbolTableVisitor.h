@@ -18,6 +18,8 @@ public:
   antlrcpp::Any visitOperand(ifccParser::OperandContext *ctx) override;
   void checkUnusedVariables();
   std::unordered_map<std::string, int> getSymbolTable() { return symbolTable; }
+  antlrcpp::Any visitFuncCall(ifccParser::FuncCallContext *ctx) override;
+
 };
 
 #endif // SYMBOLTABLEVISITOR_H

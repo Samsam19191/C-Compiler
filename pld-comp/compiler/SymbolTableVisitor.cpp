@@ -50,3 +50,18 @@ void SymbolTableVisitor::checkUnusedVariables() {
     }
   }
 }
+
+antlrcpp::Any SymbolTableVisitor::visitFuncCall(ifccParser::FuncCallContext *ctx) {
+    std::string functionName = ctx->ID()->getText();
+
+    if (functionName != "putchar" && functionName != "getchar") {
+        std::cerr << "Error: Undefined function '" << functionName << "'.\n";
+        exit(1);
+    }
+
+    for (auto expr : ctx->expr()) {
+        visit(expr);
+    }
+
+    return 0;
+}
