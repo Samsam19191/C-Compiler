@@ -3,9 +3,25 @@
 #include <cstdlib>
 #include <string>
 #include <vector>
+#include <iostream>
+#include <cstdlib>
+#include <string>
+#include <vector>
 
 antlrcpp::Any CodeGenVisitor::visitProg(ifccParser::ProgContext* ctx) {
+antlrcpp::Any CodeGenVisitor::visitProg(ifccParser::ProgContext* ctx) {
   std::cout << ".globl main\n";
+  std::cout << " main:\n";
+  std::cout << "    pushq %rbp\n";
+  std::cout << "    movq %rsp, %rbp\n";
+
+  // Vsiit statements
+  for (auto statement : ctx->statement()) {
+    std::cerr << "[DEBUG] Generating code for statement: "
+              << statement->getText() << "\n";
+    visit(statement);
+  }
+
   std::cout << " main:\n";
   std::cout << "    pushq %rbp\n";
   std::cout << "    movq %rsp, %rbp\n";
@@ -181,6 +197,30 @@ antlrcpp::Any CodeGenVisitor::visitOperandExpr(ifccParser::OperandExprContext* c
             << ctx->getText() << "\n";
   return visit(ctx->operand());
 }
+
+antlrcpp::Any CodeGenVisitor::visitFuncCall(ifccParser::FuncCallContext *ctx) {
+    std::string functionName = ctx->ID()->getText();
+
+    int argIndex = 0;
+    std::vector<std::string> registers = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
+
+    for (auto expr : ctx->expr()) {
+        visit(expr);
+
+        if (argIndex < registers.size()) {
+            std::cout << "    movq %rax, " << registers[argIndex] << "\n";
+        } else {
+            std::cerr << "Error: Too many arguments for function '" << functionName << "'.\n";
+            exit(1);
+        }
+        argIndex++;
+    }
+
+    std::cout << "    call " << functionName << "\n";
+
+    return 0;
+}
+
 
 antlrcpp::Any CodeGenVisitor::visitFuncCall(ifccParser::FuncCallContext *ctx) {
     std::string functionName = ctx->ID()->getText();

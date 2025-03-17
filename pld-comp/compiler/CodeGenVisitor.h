@@ -6,6 +6,7 @@
 #include "generated/ifccBaseVisitor.h"
 
 class CodeGenVisitor : public ifccBaseVisitor {
+class CodeGenVisitor : public ifccBaseVisitor {
 private:
   std::unordered_map<std::string, int> symbolTable; // Stores variable offsets
   std::set<std::string> initializedVariables; // Stores initialized variables
@@ -14,6 +15,9 @@ public:
   // Copie la table des symboles depuis le visiteur de la table des symboles.
   void setSymbolTable(const std::unordered_map<std::string, int>& table) {
     symbolTable = table;
+  }
+  void setInitializedVariables(const std::set<std::string> &vars) {
+    initializedVariables = vars; // Copy initialized variables from SymbolTableVisitor
   }
   void setInitializedVariables(const std::set<std::string> &vars) {
     initializedVariables = vars; // Copy initialized variables from SymbolTableVisitor
