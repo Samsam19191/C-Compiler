@@ -1,5 +1,5 @@
 #include <stdio.h>
 int main() {
-    int ret = putchar('R');
+    int ret = getchar();
     return ret;
 }
