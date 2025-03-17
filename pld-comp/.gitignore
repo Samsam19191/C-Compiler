@@ -1,9 +1,9 @@
 compiler/build
 compiler/generated
 compiler/exec
-compiler/exec.o
 compiler/exec.s
+compiler/exec.o
+tests/ifcc-test-output
 antlr/
 compiler/config.mk
-Sujet.pdf
 install-antlr.sh

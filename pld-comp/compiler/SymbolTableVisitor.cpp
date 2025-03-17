@@ -1,36 +1,88 @@
 #include "SymbolTableVisitor.h"
 
+// antlrcpp::Any
+// SymbolTableVisitor::visitAssignment(ifccParser::AssignmentContext *ctx) {
+
+//   std::vector<antlr4::tree::TerminalNode *> varNames = ctx->ID();
+//   std::vector<ifccParser::ExprContext *> exprs = ctx->expr();
+
+//   for (int i = 0; i < varNames.size(); i++) {
+//     std::string varName = varNames[i]->getText();
+//     ifccParser::ExprContext *expr = exprs[i];
+
+//     if (symbolTable.find(varName) != symbolTable.end()) {
+//       std::cerr << "Error: Variable '" << varName
+//                 << "' is declared multiple times.\n";
+//       exit(1);
+//     }
+
+//     symbolTable[varName] = currentOffset;
+//     currentOffset -= 4;
+
+//     visit(expr);
+//   }
+
+//   return 0;
+// }
+
 antlrcpp::Any
-SymbolTableVisitor::visitAssignment(ifccParser::AssignmentContext *ctx) {
-  std::string varName = ctx->ID()->getText();
+SymbolTableVisitor::visitDeclaration(ifccParser::DeclarationContext *ctx)
+{
+  std::string type = ctx->type()->getText();
+  std::vector<antlr4::tree::TerminalNode *> varNames = ctx->ID();
+  std::vector<ifccParser::ExprContext *> exprs = ctx->expr();
+  int assignments = exprs.size();
+  for (int i = 0; i < varNames.size(); i++)
+  {
+    antlr4::tree::TerminalNode *varName = varNames[i];
 
-  // Check if variable is already declared
-  if (symbolTable.find(varName) != symbolTable.end()) {
-    std::cerr << "Error: Variable '" << varName
-              << "' is declared multiple times.\n";
-    exit(1);
+    if (symbolTable.find(varName->getText()) != symbolTable.end())
+    {
+      std::cerr << "Error: Variable '" << varName->getText()
+                << "' is declared multiple times.\n";
+      exit(1);
+    }
+
+    // offset by 1 if char
+    if (type == "char")
+    {
+      currentOffset -= 1;
+    }
+    else
+    {
+      currentOffset -= 4;
+    }
+    symbolTable[varName->getText()] = currentOffset;
+
+    // only visit the right-hand side of the expression if it exists
+    if (assignments)
+    {
+      visit(exprs[i]);
+      initializedVariables.insert(varName->getText());
+    }
   }
-
-  // Assign an offset for the new variable
-  symbolTable[varName] = currentOffset;
-  currentOffset -= 4; // Move stack pointer down for the next variable
-
-  // std::cout << "[DEBUG] Assigned '" << varName << "' to offset "
-  //           << symbolTable[varName] << "\n";
-
-  // Visit the right-hand side of the assignment
-  visit(ctx->expr());
 
   return 0;
 }
 
 antlrcpp::Any
-SymbolTableVisitor::visitOperand(ifccParser::OperandContext *ctx) {
-  if (ctx->ID()) {
+SymbolTableVisitor::visitOperandExpr(ifccParser::OperandExprContext *ctx)
+{
+  // Visit the right-hand side of the expression
+  visit(ctx->operand());
+  return 0;
+}
+
+antlrcpp::Any
+SymbolTableVisitor::visitOperand(ifccParser::OperandContext *ctx)
+{
+  if (ctx->ID())
+  {
     std::string varName = ctx->ID()->getText();
 
     // Check if variable was declared before being used
-    if (symbolTable.find(varName) == symbolTable.end()) {
+    if (symbolTable.find(varName) == symbolTable.end())
+    {
       std::cerr << "Error: Variable '" << varName
                 << "' is used before being declared.\n";
       exit(1);
@@ -42,9 +94,12 @@ SymbolTableVisitor::visitOperand(ifccParser::OperandContext *ctx) {
   return 0;
 }
 
-void SymbolTableVisitor::checkUnusedVariables() {
-  for (const auto &entry : symbolTable) {
-    if (usedVariables.find(entry.first) == usedVariables.end()) {
+void SymbolTableVisitor::checkUnusedVariables()
+{
+  for (const auto &entry : symbolTable)
+  {
+    if (usedVariables.find(entry.first) == usedVariables.end())
+    {
       std::cerr << "Warning: Variable '" << entry.first
                 << "' is declared but never used.\n";
     }
