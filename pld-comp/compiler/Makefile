@@ -70,6 +70,7 @@ gui:
 clean:
 	rm -rf build generated
 	rm -f ifcc
+	rm exec exec.o exec.s
 
 exec: $(FILE)
 	./ifcc $(FILE) > exec.s

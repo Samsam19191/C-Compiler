@@ -1,3 +1,4 @@
+@ -0,0 +1,25 @@
 #!/bin/sh
 
 # This wrapper script will be invoked from the test harness every time it needs to run your compiler.

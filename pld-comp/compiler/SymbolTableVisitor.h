@@ -24,6 +24,8 @@ private:
   void checkUnusedVariables();
   std::unordered_map<std::string, int> getSymbolTable() { return symbolTable; }
   std::set<std::string> getInitializedVariables() { return initializedVariables; }
+  antlrcpp::Any visitFuncCall(ifccParser::FuncCallContext *ctx) override;
+
 };
 
 #endif // SYMBOLTABLEVISITOR_H
