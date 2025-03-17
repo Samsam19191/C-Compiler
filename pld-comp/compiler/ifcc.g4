@@ -6,8 +6,8 @@ prog : 'int' 'main' '(' ')' '{' (assignment)* return_stmt '}' ;
 
 assignment : 'int' ID '=' expr ';' ;
 
-expr : expr ('*' | '/') expr   # MulDiv
-     | expr ('+' | '-') expr   # AddSub
+expr : expr op=('*' | '/') expr   # MulDiv
+     | expr op=('+' | '-') expr   # AddSub
      | '(' expr ')'            # Parens
      | operand                 # OperandExpr
      ;

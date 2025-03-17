@@ -70,3 +70,11 @@ gui:
 clean:
 	rm -rf build generated
 	rm -f ifcc
+
+.PHONY: exec clean all gui
+
+exec:
+	rm -f exec.s exec.o exec
+	./ifcc ../tests/testfiles/7_varMult.c > exec.s
+	as -o exec.o exec.s
+	gcc -o exec exec.o

@@ -1,11 +1,13 @@
 #include "SymbolTableVisitor.h"
 
 antlrcpp::Any
-SymbolTableVisitor::visitAssignment(ifccParser::AssignmentContext *ctx) {
+SymbolTableVisitor::visitAssignment(ifccParser::AssignmentContext *ctx)
+{
   std::string varName = ctx->ID()->getText();
 
   // Check if variable is already declared
-  if (symbolTable.find(varName) != symbolTable.end()) {
+  if (symbolTable.find(varName) != symbolTable.end())
+  {
     std::cerr << "Error: Variable '" << varName
               << "' is declared multiple times.\n";
     exit(1);
@@ -25,12 +27,15 @@ SymbolTableVisitor::visitAssignment(ifccParser::AssignmentContext *ctx) {
 }
 
 antlrcpp::Any
-SymbolTableVisitor::visitOperand(ifccParser::OperandContext *ctx) {
-  if (ctx->ID()) {
+SymbolTableVisitor::visitOperand(ifccParser::OperandContext *ctx)
+{
+  if (ctx->ID())
+  {
     std::string varName = ctx->ID()->getText();
 
     // Check if variable was declared before being used
-    if (symbolTable.find(varName) == symbolTable.end()) {
+    if (symbolTable.find(varName) == symbolTable.end())
+    {
       std::cerr << "Error: Variable '" << varName
                 << "' is used before being declared.\n";
       exit(1);
@@ -42,9 +47,12 @@ SymbolTableVisitor::visitOperand(ifccParser::OperandContext *ctx) {
   return 0;
 }
 
-void SymbolTableVisitor::checkUnusedVariables() {
-  for (const auto &entry : symbolTable) {
-    if (usedVariables.find(entry.first) == usedVariables.end()) {
+void SymbolTableVisitor::checkUnusedVariables()
+{
+  for (const auto &entry : symbolTable)
+  {
+    if (usedVariables.find(entry.first) == usedVariables.end())
+    {
       std::cerr << "Warning: Variable '" << entry.first
                 << "' is declared but never used.\n";
     }
