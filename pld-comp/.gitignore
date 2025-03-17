@@ -3,6 +3,7 @@ compiler/generated
 compiler/exec
 compiler/exec.s
 compiler/exec.o
+tests/ifcc-test-output
 antlr/
 compiler/config.mk
 install-antlr.sh
