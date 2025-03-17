@@ -50,6 +50,8 @@ int main(int argn, const char **argv) {
 
   CodeGenVisitor v;
   v.setSymbolTable(stv.getSymbolTable()); // Transfer symbol table
+  v.setInitializedVariables(
+      stv.getInitializedVariables()); // Transfer initialized variables
   v.visit(tree);
 
   return 0;
