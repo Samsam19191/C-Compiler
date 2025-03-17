@@ -1,22 +1,23 @@
 #pragma once
 
-
 #include "antlr4-runtime.h"
 #include <unordered_map>
 #include <iostream>
 #include "generated/ifccBaseVisitor.h"
 
-
-class  CodeGenVisitor : public ifccBaseVisitor {
+class CodeGenVisitor : public ifccBaseVisitor
+{
 private:
   std::unordered_map<std::string, int> symbolTable; // Stores variable offsets
-  std::set<std::string> initializedVariables; // Stores initialized variables
+  std::set<std::string> initializedVariables;       // Stores initialized variables
 
 public:
-  void setSymbolTable(const std::unordered_map<std::string, int> &table) {
+  void setSymbolTable(const std::unordered_map<std::string, int> &table)
+  {
     symbolTable = table; // Copy symbol table from SymbolTableVisitor
   }
-  void setInitializedVariables(const std::set<std::string> &vars) {
+  void setInitializedVariables(const std::set<std::string> &vars)
+  {
     initializedVariables = vars; // Copy initialized variables from SymbolTableVisitor
   }
 
@@ -29,8 +30,8 @@ public:
   antlrcpp::Any visitMulDiv(ifccParser::MulDivContext *ctx) override;
   antlrcpp::Any visitAddSub(ifccParser::AddSubContext *ctx) override;
   antlrcpp::Any visitParens(ifccParser::ParensContext *ctx) override;
+  antlrcpp::Any visitBitOps(ifccParser::BitOpsContext *ctx);
 
   virtual antlrcpp::Any
   visitReturn_stmt(ifccParser::Return_stmtContext *ctx) override;
 };
-
