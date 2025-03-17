@@ -12,8 +12,8 @@ assignment : ID '=' expr (',' ID '=' expr)* ';' ;
 
 type : 'int' | 'char' ;
 
-expr : expr ('*' | '/') expr   # MulDiv
-     | expr ('+' | '-') expr   # AddSub
+expr : expr op=('*' | '/') expr   # MulDiv
+     | expr op=('+' | '-') expr   # AddSub
      | '(' expr ')'            # Parens
      | operand                 # OperandExpr
      ;
