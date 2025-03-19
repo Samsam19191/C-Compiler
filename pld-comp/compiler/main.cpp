@@ -55,7 +55,7 @@ int main(int argn, const char **argv) {
 
 
   // Visiteur de génération de code
-  CodeGenVisitor v;
+  CodeGenVisitorV2 v;
   v.setSymbolTable(stv.getSymbolTable()); // Transfert de la table des symboles
   v.setCFG(cfg);  // On passe le CFG pour que CodeGenVisitor y ajoute des instructions IR
   v.visit(tree);

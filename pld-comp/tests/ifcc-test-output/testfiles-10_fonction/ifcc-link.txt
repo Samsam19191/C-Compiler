@@ -1,2 +1,4 @@
+asm-ifcc.s: Assembler messages:
+asm-ifcc.s:33: Error: unsupported instruction `mov'
 
-exit status: 0
+exit status: 1
