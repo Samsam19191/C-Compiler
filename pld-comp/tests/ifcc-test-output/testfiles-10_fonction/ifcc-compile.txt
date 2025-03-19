@@ -1,0 +1,4 @@
+Warning: Variable 'y' is declared but never used.
+Warning: Variable 'x' is declared but never used.
+
+exit status: 0

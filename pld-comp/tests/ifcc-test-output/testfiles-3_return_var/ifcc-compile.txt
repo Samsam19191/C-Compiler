@@ -1,0 +1,4 @@
+line 3:4 extraneous input 'x' expecting {'int', 'return'}
+error: syntax error during parsing
+
+exit status: 1
