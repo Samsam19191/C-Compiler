@@ -5,16 +5,11 @@
 #include <cstdlib>
 #include <map>
 
+using namespace std;
+using std::runtime_error;
+using std::to_string;
 
-using std::vector;
-using std::string;
-using std::ostream;
-using std::map;
-
-// Définition de la variable globale target_arch
-// Vous pouvez changer cette valeur pour "ARM" ou "MSP430" selon la cible souhaitée.
-std::string target_arch = "x86";
-
+string target_arch = "x86"; // Cible par défaut
 
 /* ========================
    Implémentation de IRInstr
@@ -24,69 +19,74 @@ IRInstr::IRInstr(BasicBlock* bb_, Operation op, Type t, vector<string> params)
 }
 
 void IRInstr::gen_asm(ostream &o) {
-    // Choix du code à générer selon l'architecture cible
+    // Choix du code à générer selon la cible
     if (target_arch == "x86") {
         o << "    # x86 IRInstr: ";
-        
     } else if (target_arch == "ARM") {
         o << "    // ARM IRInstr: ";
     } else if (target_arch == "MSP430") {
         o << "    ; MSP430 IRInstr: ";
     } else {
-        throw std::runtime_error("Architecture cible inconnue: " + target_arch);
+        throw runtime_error("Architecture cible inconnue: " + target_arch);
     }
     
-    // Génération simplifiée : afficher l'opération et ses paramètres.
+    // On affiche le nom de l'opération pour le debug (optionnel)
     switch(op) {
         case ldconst: o << "ldconst"; break;
-        case copy:    o << "copy";    break;
-        case add:     o << "add";     break;
-        case sub:     o << "sub";     break;
-        case mul:     o << "mul";     break;
-        case rmem:    o << "rmem";    break;
-        case wmem:    o << "wmem";    break;
-        case call:    o << "call";    break;
-        case cmp_eq:  o << "cmp_eq";  break;
-        case cmp_lt:  o << "cmp_lt";  break;
-        case cmp_le:  o << "cmp_le";  break;
+        case copy:    o << "copy"; break;
+        case add:     o << "add"; break;
+        case sub:     o << "sub"; break;
+        case mul:     o << "mul"; break;
+        case rmem:    o << "rmem"; break;
+        case wmem:    o << "wmem"; break;
+        case call:    o << "call"; break;
+        case cmp_eq:  o << "cmp_eq"; break;
+        case cmp_lt:  o << "cmp_lt"; break;
+        case cmp_le:  o << "cmp_le"; break;
+        case mov:    o << "mov"; break;
         default:      o << "unknown"; break;
     }
     for (const auto &p : params) {
         o << " " << p;
     }
-
-    switch(op) {
+    
+    // Traduction en code assembleur pour la cible x86 (exemple)
+    if (target_arch == "x86") {
+        switch(op) {
             case ldconst:
                 // params: [dest, constant]
-                o << "    movl $" << params[1] << ", " << params[0] << "\n";
+                o << "\n    movl $" << params[1] << ", " << params[0] << "\n";
                 break;
             case copy:
                 // params: [dest, src]
-                o << "    movl " << params[1] << ", " << params[0] << "\n";
+                o << "\n    movl " << params[1] << ", " << params[0] << "\n";
                 break;
             case add:
                 // params: [dest, src1, src2]
-                // On suppose ici que le résultat doit être placé dans dest.
-                o << "    movl " << params[1] << ", " << params[0] << "\n";
+                o << "\n    movl " << params[1] << ", " << params[0] << "\n";
                 o << "    addl " << params[2] << ", " << params[0] << "\n";
                 break;
             case sub:
-                o << "    movl " << params[1] << ", " << params[0] << "\n";
+                o << "\n    movl " << params[1] << ", " << params[0] << "\n";
                 o << "    subl " << params[2] << ", " << params[0] << "\n";
                 break;
             case mul:
-                o << "    movl " << params[1] << ", " << params[0] << "\n";
+                o << "\n    movl " << params[1] << ", " << params[0] << "\n";
                 o << "    imull " << params[2] << ", " << params[0] << "\n";
                 break;
-            // Vous pouvez ajouter d'autres opérations de la même manière.
+            case call:
+                // Pour un appel, on émet simplement l'instruction call
+                o << "\n    call " << params[0] << "\n";
+                break;
             default:
-                o << "    # Opération non implémentée\n";
+                o << "\n    # Opération non implémentée\n";
                 break;
         }
+    }
+    // Pour ARM ou MSP430, vous adapterez ici les instructions.
     
     o << "\n";
 }
-
 
 /* ========================
    Implémentation de BasicBlock
@@ -101,23 +101,20 @@ void BasicBlock::add_IRInstr(IRInstr::Operation op, Type t, vector<string> param
 }
 
 void BasicBlock::gen_asm(ostream &o) {
-    // Affichage du label du bloc
+    // Affiche le label du bloc
     o << label << ":\n";
     
-    // Génération de l'assembleur pour chaque instruction IR dans le bloc
+    // Génère l'assembleur pour chaque instruction IR dans le bloc
     for (auto instr : instrs) {
         instr->gen_asm(o);
     }
     
     // Gestion du branchement en fin de bloc
     if (exit_true == nullptr && exit_false == nullptr) {
-        // Bloc terminal (aucun saut à générer)
         o << "    # Fin de bloc (terminal)\n";
     } else if (exit_false == nullptr) {
-        // Saut inconditionnel vers exit_true
         o << "    jmp " << exit_true->label << "\n";
     } else {
-        // Branchage conditionnel : on utilise test_var_name pour comparer le résultat du test
         if (target_arch == "x86") {
             o << "    cmp " << test_var_name << ", $1\n";
             o << "    jne " << exit_false->label << "\n";
@@ -134,7 +131,6 @@ void BasicBlock::gen_asm(ostream &o) {
     }
 }
 
-
 /* ========================
    Implémentation de CFG
    ======================== */
@@ -148,19 +144,17 @@ void CFG::add_bb(BasicBlock* bb) {
 }
 
 string CFG::IR_reg_to_asm(string reg) {
-    // Conversion simplifiée : retourne l'offset sous forme "-offset(%rbp)" pour x86,
-    // ou une version adaptée pour ARM/MSP430 (ici on renvoie le nom tel quel pour simplifier)
     if (target_arch == "x86") {
         int index = get_var_index(reg);
-        return "-" + std::to_string(index) + "(%rbp)";
+        return "-" + to_string(index) + "(%rbp)";
     } else {
-        return reg; // Pour ARM/MSP430, adapter selon vos conventions
+        return reg;
     }
 }
 
 void CFG::gen_asm_prologue(ostream &o) {
     if (target_arch == "x86") {
-        // Ajout de la directive globale et du label main
+        o << ".att_syntax prefix\n";
         o << ".globl main\n";
         o << "main:\n";
         o << "    pushq %rbp\n";
@@ -171,10 +165,9 @@ void CFG::gen_asm_prologue(ostream &o) {
         o << "    stmfd sp!, {fp, lr}\n";
         o << "    add fp, sp, #4\n";
     } else if (target_arch == "MSP430") {
-        o << "    ; MSP430\n";
+        o << "    ; MSP430 prologue (à adapter)\n";
     }
 }
-
 
 void CFG::gen_asm_epilogue(ostream &o) {
     if (target_arch == "x86") {
@@ -189,28 +182,21 @@ void CFG::gen_asm_epilogue(ostream &o) {
 }
 
 void CFG::gen_asm(ostream &o) {
-    // Génère le prologue
     gen_asm_prologue(o);
-    
-    // Génère l'assembleur pour chaque BasicBlock
     for (auto bb : bbs) {
         bb->gen_asm(o);
     }
-    
-    // Génère l'épilogue
     gen_asm_epilogue(o);
 }
 
 void CFG::add_to_symbol_table(string name, Type t) {
     SymbolType[name] = t;
-    // Par exemple, on alloue 4 octets par variable pour x86
     SymbolIndex[name] = nextFreeSymbolIndex;
     nextFreeSymbolIndex += 4;
 }
 
 string CFG::create_new_tempvar(Type t) {
-    // Crée un nom temporaire unique avec un préfixe "!" pour éviter les conflits avec les variables C
-    string temp = "!tmp" + std::to_string(nextFreeSymbolIndex / 4);
+    string temp = "!tmp" + to_string(nextFreeSymbolIndex / 4);
     add_to_symbol_table(temp, t);
     return temp;
 }
@@ -218,15 +204,15 @@ string CFG::create_new_tempvar(Type t) {
 int CFG::get_var_index(string name) {
     if (SymbolIndex.find(name) != SymbolIndex.end())
         return SymbolIndex[name];
-    throw std::runtime_error("Variable non trouvée dans la table des symboles : " + name);
+    throw runtime_error("Variable non trouvée dans la table des symboles : " + name);
 }
 
 Type CFG::get_var_type(string name) {
     if (SymbolType.find(name) != SymbolType.end())
         return SymbolType[name];
-    throw std::runtime_error("Type non trouvé pour la variable : " + name);
+    throw runtime_error("Type non trouvé pour la variable : " + name);
 }
 
 string CFG::new_BB_name() {
-    return "BB_" + std::to_string(nextBBnumber++);
+    return "BB_" + to_string(nextBBnumber++);
 }

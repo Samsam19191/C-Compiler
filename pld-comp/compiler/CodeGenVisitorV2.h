@@ -1,36 +1,41 @@
 #pragma once
 
 #include "antlr4-runtime.h"
-#include <unordered_map>
-#include <iostream>
 #include "generated/ifccBaseVisitor.h"
-#include "IR.h"  // On utilise désormais le module IR
+#include "IR.h"
+#include <unordered_map>
+#include <string>
 
-class CodeGenVisitor : public ifccBaseVisitor {
-private:
-  // La table des symboles stocke ici les offsets des variables (de type int)
-  std::unordered_map<std::string, int> symbolTable;
-  CFG* cfg; // Pointeur vers le CFG où l'on construit l'IR
+using namespace std;
 
+class CodeGenVisitorV2 : public ifccBaseVisitor {
 public:
-  // Copie la table des symboles depuis le visiteur de la table des symboles.
-  void setSymbolTable(const std::unordered_map<std::string, int>& table) {
-    symbolTable = table;
-  }
-  
-  // Permet de fixer le CFG (créé dans main.cpp ou ailleurs)
-  void setCFG(CFG* c) {
-    cfg = c;
-  }
+    // Constructeur et destructeur virtuel (pour générer la vtable)
+    CodeGenVisitorV2() : cfg(nullptr) {}
+    virtual ~CodeGenVisitorV2();
 
-  // Méthodes override pour la génération de code.
-  virtual antlrcpp::Any visitProg(ifccParser::ProgContext* ctx) override;
-  antlrcpp::Any visitAssignment(ifccParser::AssignmentContext* ctx) override;
-  antlrcpp::Any visitOperand(ifccParser::OperandContext* ctx) override;
-  antlrcpp::Any visitOperandExpr(ifccParser::OperandExprContext* ctx) override;
-  antlrcpp::Any visitMulDiv(ifccParser::MulDivContext* ctx) override;
-  antlrcpp::Any visitAddSub(ifccParser::AddSubContext* ctx) override;
-  antlrcpp::Any visitParens(ifccParser::ParensContext* ctx) override;
-  virtual antlrcpp::Any visitReturn_stmt(ifccParser::Return_stmtContext* ctx) override;
-  antlrcpp::Any visitFuncCall(ifccParser::FuncCallContext *ctx) override;
+    // Méthode pour fixer la table des symboles
+    void setSymbolTable(const unordered_map<string,int>& table) {
+        symbolTable = table;
+    }
+    
+    // Méthode pour fixer le CFG utilisé pour construire l'IR
+    void setCFG(CFG* c) {
+        cfg = c;
+    }
+
+    // Méthodes de visite override pour construire l'IR
+    virtual antlrcpp::Any visitProg(ifccParser::ProgContext* ctx) override;
+    antlrcpp::Any visitAssignment(ifccParser::AssignmentContext* ctx) override;
+    virtual antlrcpp::Any visitReturn_stmt(ifccParser::Return_stmtContext* ctx) override;
+    antlrcpp::Any visitOperand(ifccParser::OperandContext* ctx) override;
+    antlrcpp::Any visitOperandExpr(ifccParser::OperandExprContext* ctx) override;
+    antlrcpp::Any visitMulDiv(ifccParser::MulDivContext* ctx) override;
+    antlrcpp::Any visitAddSub(ifccParser::AddSubContext* ctx) override;
+    antlrcpp::Any visitParens(ifccParser::ParensContext* ctx) override;
+    antlrcpp::Any visitFuncCall(ifccParser::FuncCallContext* ctx) override;
+    
+private:
+    unordered_map<string,int> symbolTable;
+    CFG* cfg;
 };

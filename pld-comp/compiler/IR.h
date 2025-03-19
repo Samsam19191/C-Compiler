@@ -35,6 +35,7 @@ class IRInstr {
 		add,
 		sub,
 		mul,
+		mov,
 		rmem,
 		wmem,
 		call, 
