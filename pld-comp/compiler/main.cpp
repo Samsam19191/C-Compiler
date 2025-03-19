@@ -3,14 +3,13 @@
 #include <iostream>
 #include <sstream>
 
-
-#include "CodeGenVisitor.h"
+#include "CodeGenVisitorV2.h"
 #include "SymbolTableVisitor.h"
+#include "IR.h"  // Pour CFG, etc.
 #include "antlr4-runtime.h"
 #include "generated/ifccBaseVisitor.h"
 #include "generated/ifccLexer.h"
 #include "generated/ifccParser.h"
-
 
 using namespace antlr4;
 using namespace std;
@@ -33,7 +32,6 @@ int main(int argn, const char **argv) {
 
   ifccLexer lexer(&input);
   CommonTokenStream tokens(&lexer);
-
   tokens.fill();
 
   ifccParser parser(&tokens);
@@ -44,15 +42,29 @@ int main(int argn, const char **argv) {
     exit(1);
   }
 
+  // Visiteur de la table des symboles
   SymbolTableVisitor stv;
   stv.visit(tree);
   stv.checkUnusedVariables(); // Check for unused variables
 
+  // Création du CFG pour construire l'IR.
+  // Ici, nous passons nullptr comme DefFonction* car nous n'avons pas encore de structure dédiée.
+  CFG* cfg = new CFG(nullptr);
+  BasicBlock* bb0 = new BasicBlock(cfg, cfg->new_BB_name());
+  cfg->add_bb(bb0);
+
+
+  // Visiteur de génération de code
   CodeGenVisitor v;
-  v.setSymbolTable(stv.getSymbolTable()); // Transfer symbol table
-  v.setInitializedVariables(
-      stv.getInitializedVariables()); // Transfer initialized variables
+  v.setSymbolTable(stv.getSymbolTable()); // Transfert de la table des symboles
+  v.setCFG(cfg);  // On passe le CFG pour que CodeGenVisitor y ajoute des instructions IR
   v.visit(tree);
+
+  // Une fois l'IR construite, on génère le code assembleur final.
+  cfg->gen_asm(std::cout);
+
+  // (Optionnel) Nettoyage de la mémoire allouée pour le CFG
+  // delete cfg; 
 
   return 0;
 }
