@@ -98,12 +98,10 @@ antlrcpp::Any CodeGenVisitorV2::visitAddSub(ifccParser::AddSubContext *ctx)
 {
     // Evaluate left operand (a) into ACC_REG
     visit(ctx->expr(0));
-    // Save left operand into a temporary variable
     string temp = cfg->create_new_tempvar(Type::INT);
     cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {temp, ACC_REG});
     // Evaluate right operand (b) into ACC_REG
     visit(ctx->expr(1));
-
     if (ctx->getText().find("+") != string::npos)
     {
         cfg->current_bb->add_IRInstr(IRInstr::add, Type::INT, {ACC_REG, ACC_REG, temp});
