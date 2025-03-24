@@ -1,4 +1,5 @@
 #include "CodeGenVisitorV2.h"
+#include "IR.h"
 #include <iostream>
 #include <cstdlib>
 #include <string>
@@ -30,13 +31,14 @@ antlrcpp::Any CodeGenVisitorV2::visitAssignment(ifccParser::AssignmentContext *c
     string varName = ctx->ID()->getText();
     if (symbolTable.find(varName) == symbolTable.end())
     {
-        std::cerr << "Error: Undefined variable '" << varName
-                  << "' during code generation.\n";
+        cerr << "Error: Undefined variable '" << varName
+             << "' during code generation.\n";
         exit(1);
     }
-    string offset = to_string(symbolTable[varName]) + "(%rbp)";
+    // Build the offset string using BP_REG placeholder.
+    string offset = to_string(symbolTable[varName]) + "(" + BP_REG + ")";
     visit(ctx->expr());
-    cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {offset, "%eax"});
+    cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {offset, ACC_REG});
     return 0;
 }
 
@@ -45,14 +47,14 @@ antlrcpp::Any CodeGenVisitorV2::visitOperand(ifccParser::OperandContext *ctx)
     if (ctx->CONST())
     {
         int value = stoi(ctx->CONST()->getText());
-        cfg->current_bb->add_IRInstr(IRInstr::ldconst, Type::INT, {"%eax", to_string(value)});
+        cfg->current_bb->add_IRInstr(IRInstr::ldconst, Type::INT, {ACC_REG, to_string(value)});
     }
     else if (ctx->CHAR())
     {
         string literal = ctx->CHAR()->getText();
         char c = literal[1];
         int value = static_cast<int>(c);
-        cfg->current_bb->add_IRInstr(IRInstr::ldconst, Type::INT, {"%eax", to_string(value)});
+        cfg->current_bb->add_IRInstr(IRInstr::ldconst, Type::INT, {ACC_REG, to_string(value)});
     }
     else if (ctx->ID())
     {
@@ -63,9 +65,9 @@ antlrcpp::Any CodeGenVisitorV2::visitOperand(ifccParser::OperandContext *ctx)
                  << "' during code generation." << endl;
             exit(1);
         }
-        // Convert the variable name to its offset string (e.g., "-4(%rbp)")
-        string offset = to_string(symbolTable[varName]) + "(%rbp)";
-        cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {"%eax", offset});
+        // Convert the variable name to its offset string using BP_REG.
+        string offset = to_string(symbolTable[varName]) + "(" + BP_REG + ")";
+        cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {ACC_REG, offset});
     }
     return 0;
 }
@@ -79,38 +81,38 @@ antlrcpp::Any CodeGenVisitorV2::visitMulDiv(ifccParser::MulDivContext *ctx)
 {
     visit(ctx->expr(1));
     string temp = cfg->create_new_tempvar(Type::INT);
-    cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {temp, "%eax"});
+    cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {temp, ACC_REG});
     visit(ctx->expr(0));
     if (ctx->getText().find("*") != string::npos)
     {
-        cfg->current_bb->add_IRInstr(IRInstr::mul, Type::INT, {"%eax", "%eax", temp});
+        cfg->current_bb->add_IRInstr(IRInstr::mul, Type::INT, {ACC_REG, ACC_REG, temp});
     }
     else
     {
-        cfg->current_bb->add_IRInstr(IRInstr::call, Type::INT, {"div", "%eax", temp});
+        cfg->current_bb->add_IRInstr(IRInstr::call, Type::INT, {"div", ACC_REG, temp});
     }
     return 0;
 }
 
 antlrcpp::Any CodeGenVisitorV2::visitAddSub(ifccParser::AddSubContext *ctx)
 {
-    // Evaluate left operand (a) into %eax
+    // Evaluate left operand (a) into ACC_REG
     visit(ctx->expr(0));
     // Save left operand into a temporary variable
     string temp = cfg->create_new_tempvar(Type::INT);
-    cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {temp, "%eax"});
-    // Evaluate right operand (b) into %eax
+    cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {temp, ACC_REG});
+    // Evaluate right operand (b) into ACC_REG
     visit(ctx->expr(1));
 
     if (ctx->getText().find("+") != string::npos)
     {
-        cfg->current_bb->add_IRInstr(IRInstr::add, Type::INT, {"%eax", "%eax", temp});
+        cfg->current_bb->add_IRInstr(IRInstr::add, Type::INT, {ACC_REG, ACC_REG, temp});
     }
     else
     {
         string tempB = cfg->create_new_tempvar(Type::INT);
-        cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {tempB, "%eax"});
-        cfg->current_bb->add_IRInstr(IRInstr::sub, Type::INT, {"%eax", temp, tempB});
+        cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {tempB, ACC_REG});
+        cfg->current_bb->add_IRInstr(IRInstr::sub, Type::INT, {ACC_REG, temp, tempB});
     }
     return 0;
 }
@@ -124,7 +126,8 @@ antlrcpp::Any CodeGenVisitorV2::visitFuncCall(ifccParser::FuncCallContext *ctx)
 {
     string functionName = ctx->ID()->getText();
     int argIndex = 0;
-    vector<string> registers = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
+    // Replace with global register placeholders where applicable.
+    vector<string> registers = {RDI_REG, "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
     vector<string> argRegs;
 
     for (auto expr : ctx->expr())
@@ -133,7 +136,7 @@ antlrcpp::Any CodeGenVisitorV2::visitFuncCall(ifccParser::FuncCallContext *ctx)
         if (argIndex < registers.size())
         {
             string reg = registers[argIndex];
-            cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {reg, "%eax"});
+            cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {reg, ACC_REG});
             argRegs.push_back(reg);
         }
         else
@@ -146,7 +149,7 @@ antlrcpp::Any CodeGenVisitorV2::visitFuncCall(ifccParser::FuncCallContext *ctx)
 
     vector<string> callParams;
     callParams.push_back(functionName);
-    callParams.push_back("%eax");
+    callParams.push_back(ACC_REG);
     for (auto reg : argRegs)
     {
         callParams.push_back(reg);

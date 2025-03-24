@@ -15,6 +15,11 @@ using std::vector;
 #include "type.h"
 #include "symbole.h"
 
+// Global placeholders for registers
+extern string ACC_REG; // accumulator, instead of "%eax"
+extern string BP_REG;  // base pointer, instead of "%rbp"
+extern string RDI_REG; // first argument register, etc.
+
 class BasicBlock;
 class CFG;
 class DefFonction;
