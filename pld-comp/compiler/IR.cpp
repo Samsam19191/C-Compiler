@@ -11,6 +11,10 @@ using std::to_string;
 
 string target_arch = "x86"; // Cible par défaut
 
+string ACC_REG = "%eax";
+string BP_REG = "%rbp";
+string RDI_REG = "%rdi";
+
 /* ========================
    Implémentation de IRInstr
    ======================== */
@@ -134,6 +138,108 @@ void IRInstr::gen_asm(ostream &o)
             break;
         }
     }
+    else if (target_arch == "ARM") {
+        switch(op) {
+            case ldconst:
+                o << "\n    mov " << params[0] << ", #" << params[1] << "\n";
+                break;
+            case copy:
+                o << "\n    mov " << params[0] << ", " << params[1] << "\n";
+                break;
+            case add:
+                o << "\n    add " << params[0] << ", " << params[1] << ", " << params[2] << "\n";
+                break;
+            case sub:
+                o << "\n    sub " << params[0] << ", " << params[1] << ", " << params[2] << "\n";
+                break;
+            case mul:
+                o << "\n    mul " << params[0] << ", " << params[1] << ", " << params[2] << "\n";
+                break;
+            case call:
+                o << "\n    bl " << params[0] << "\n"; // Branch with link (function call)
+                break;
+            default:
+                o << "\n    // Operation not implemented for ARM64\n";
+                break;
+        }
+    } 
+    
+    else if (target_arch == "MSP430") {
+        switch(op) {
+            case ldconst:
+                o << "\n    mov #" << params[1] << ", " << params[0] << "\n";
+                break;
+            case copy:
+                o << "\n    mov " << params[1] << ", " << params[0] << "\n";
+                break;
+            case add:
+                o << "\n    add " << params[1] << ", " << params[0] << "\n";
+                break;
+            case sub:
+                o << "\n    sub " << params[1] << ", " << params[0] << "\n";
+                break;
+            case mul:
+                o << "\n    call #__mspabi_mpy16\n"; // MSP430 requires special function for multiplication
+                break;
+            case call:
+                o << "\n    call " << params[0] << "\n";
+                break;
+            default:
+                o << "\n    ; Operation not implemented for MSP430\n";
+                break;
+        }
+    }
+    else if (target_arch == "ARM") {
+        switch(op) {
+            case ldconst:
+                o << "\n    mov " << params[0] << ", #" << params[1] << "\n";
+                break;
+            case copy:
+                o << "\n    mov " << params[0] << ", " << params[1] << "\n";
+                break;
+            case add:
+                o << "\n    add " << params[0] << ", " << params[1] << ", " << params[2] << "\n";
+                break;
+            case sub:
+                o << "\n    sub " << params[0] << ", " << params[1] << ", " << params[2] << "\n";
+                break;
+            case mul:
+                o << "\n    mul " << params[0] << ", " << params[1] << ", " << params[2] << "\n";
+                break;
+            case call:
+                o << "\n    bl " << params[0] << "\n"; // Branch with link (function call)
+                break;
+            default:
+                o << "\n    // Operation not implemented for ARM64\n";
+                break;
+        }
+    } 
+    
+    else if (target_arch == "MSP430") {
+        switch(op) {
+            case ldconst:
+                o << "\n    mov #" << params[1] << ", " << params[0] << "\n";
+                break;
+            case copy:
+                o << "\n    mov " << params[1] << ", " << params[0] << "\n";
+                break;
+            case add:
+                o << "\n    add " << params[1] << ", " << params[0] << "\n";
+                break;
+            case sub:
+                o << "\n    sub " << params[1] << ", " << params[0] << "\n";
+                break;
+            case mul:
+                o << "\n    call #__mspabi_mpy16\n"; // MSP430 requires special function for multiplication
+                break;
+            case call:
+                o << "\n    call " << params[0] << "\n";
+                break;
+            default:
+                o << "\n    ; Operation not implemented for MSP430\n";
+                break;
+        }
+    }
     // Pour ARM ou MSP430, vous adapterez ici les instructions.
 
     o << "\n";
@@ -232,16 +338,12 @@ void CFG::gen_asm_prologue(ostream &o)
         o << "main:\n";
         o << "    pushq %rbp\n";
         o << "    movq %rsp, %rbp\n";
-    }
-    else if (target_arch == "ARM")
-    {
-        o << ".global main\n";
-        o << "main:\n";
-        o << "    stmfd sp!, {fp, lr}\n";
-        o << "    add fp, sp, #4\n";
-    }
-    else if (target_arch == "MSP430")
-    {
+    } else if (target_arch == "ARM") {
+        o << ".global _main\n";
+        o << "_main:\n";
+        o << "    stp x29, x30, [sp, #-16]!\n";
+        o << "    mov x29, sp\n";
+    } else if (target_arch == "MSP430") {
         o << "    ; MSP430 prologue (à adapter)\n";
     }
 }
@@ -252,14 +354,10 @@ void CFG::gen_asm_epilogue(ostream &o)
     {
         o << "    popq %rbp\n";
         o << "    ret\n";
-    }
-    else if (target_arch == "ARM")
-    {
-        o << "    ldmfd sp!, {fp, lr}\n";
-        o << "    bx lr\n";
-    }
-    else if (target_arch == "MSP430")
-    {
+    } else if (target_arch == "ARM") {
+        o << "    ldp x29, x30, [sp], #16\n";
+        o << "    ret\n";
+    } else if (target_arch == "MSP430") {
         o << "    ; MSP430 épilogue (à adapter)\n";
     }
 }
