@@ -11,6 +11,10 @@ using std::to_string;
 
 string target_arch = "x86"; // Cible par défaut
 
+string ACC_REG = "%eax";
+string BP_REG = "%rbp";
+string RDI_REG = "%rdi";
+
 /* ========================
    Implémentation de IRInstr
    ======================== */
