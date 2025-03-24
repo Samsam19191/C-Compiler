@@ -1,11 +1,14 @@
 #include "CodeGenVisitor.h"
+#include <iostream>
+#include <cstdlib>
+#include <string>
+#include <vector>
 
-antlrcpp::Any CodeGenVisitor::visitProg(ifccParser::ProgContext *ctx)
-{
+antlrcpp::Any CodeGenVisitor::visitProg(ifccParser::ProgContext *ctx) {
   std::cout << ".globl main\n";
-  std::cout << " main: \n";
-  std::cout << "    pushq %rbp \n";
-  std::cout << "    movq %rsp, %rbp \n";
+  std::cout << " main:\n";
+  std::cout << "    pushq %rbp\n";
+  std::cout << "    movq %rsp, %rbp\n";
 
   // Vsiit statements
   for (auto statement : ctx->statement())
@@ -41,20 +44,14 @@ CodeGenVisitor::visitStatement(ifccParser::StatementContext *ctx)
 }
 
 antlrcpp::Any
-CodeGenVisitor::visitReturn_stmt(ifccParser::Return_stmtContext *ctx)
-{
+CodeGenVisitor::visitReturn_stmt(ifccParser::Return_stmtContext *ctx) {
   // visit(ctx->operand());
   visit(ctx->expr());
-  // int retval = stoi(ctx->CONST()->getText());
-
-  // std::cout << "    movl $" << retval << ", %eax\n";
-
   return 0;
 }
 
 antlrcpp::Any
-CodeGenVisitor::visitAssignment(ifccParser::AssignmentContext *ctx)
-{
+CodeGenVisitor::visitAssignment(ifccParser::AssignmentContext *ctx) {
   const std::vector<antlr4::tree::TerminalNode *> &varNames = ctx->ID();
   const std::vector<ifccParser::ExprContext *> &exprs = ctx->expr();
 
@@ -104,31 +101,24 @@ CodeGenVisitor::visitDeclaration(ifccParser::DeclarationContext *ctx)
   return 0;
 }
 
-antlrcpp::Any CodeGenVisitor::visitOperand(ifccParser::OperandContext *ctx)
-{
-  if (ctx->CONSTINT())
-  {
+antlrcpp::Any CodeGenVisitor::visitOperand(ifccParser::OperandContext *ctx) {
+  if (ctx->CONSTINT()) {
     int value = std::stoi(ctx->CONSTINT()->getText());
     std::cerr << "[DEBUG] Loading constant " << value << "\n";
     std::cout << "    movl $" << value << ", %eax\n";
-  }
-  else if (ctx->ID())
-  {
+  } else if (ctx->ID()) {
     std::string varName = ctx->ID()->getText();
     std::cerr << "[DEBUG] Loading variable '" << varName << "' from offset "
               << symbolTable[varName] << "\n";
 
     if (symbolTable.find(varName) == symbolTable.end() ||
-        initializedVariables.find(varName) == initializedVariables.end())
-    {
+        initializedVariables.find(varName) == initializedVariables.end()) {
       std::cerr << "Error: Undefined or Uninitialized variable '" << varName
                 << "' during code generation.\n";
       exit(1);
     }
     std::cout << "    movl " << symbolTable[varName] << "(%rbp), %eax\n";
-  }
-  else if (ctx->CONSTCHAR())
-  {
+  } else if (ctx->CONSTCHAR()) {
     char value = ctx->CONSTCHAR()->getText()[1];
     std::cout << "    movl $" << (int)value << ", %eax\n";
   }
@@ -136,38 +126,13 @@ antlrcpp::Any CodeGenVisitor::visitOperand(ifccParser::OperandContext *ctx)
   {
     char value = ctx->CONSTCHAR()->getText()[1];
     std::cout << "    movl $" << (int)value << ", %eax\n";
-  }
-  return 0;
+    }
+    return 0;
 }
 
-antlrcpp::Any CodeGenVisitor::visitBitOps(ifccParser::BitOpsContext *ctx)
-{
-  // Evaluate the left operand and store the result in %eax
-  visit(ctx->expr(0));
-  // Save %eax in %edx
-  std::cout << "    movl %eax, %edx\n";
-  // Evaluate the right operand; result is in %eax
-  visit(ctx->expr(1));
-  std::string op = ctx->op->getText();
-
-  if (op == "&")
-  {
-    std::cout << "    andl %edx, %eax\n";
-  }
-  else if (op == "|")
-  {
-    std::cout << "    orl %edx, %eax\n";
-  }
-  else if (op == "^")
-  {
-    std::cout << "    xorl %edx, %eax\n";
-  }
-
-  return 0;
-}
-
-antlrcpp::Any CodeGenVisitor::visitMulDiv(ifccParser::MulDivContext *ctx)
-{
+antlrcpp::Any CodeGenVisitor::visitMulDiv(ifccParser::MulDivContext *ctx) {
+  // Récupérer l'opérateur à partir du nœud (ici en utilisant le vecteur
+  // children)
   std::string op = ctx->op->getText();
 
   if (op == "*")
@@ -200,8 +165,7 @@ antlrcpp::Any CodeGenVisitor::visitMulDiv(ifccParser::MulDivContext *ctx)
   return 0;
 }
 
-antlrcpp::Any CodeGenVisitor::visitAddSub(ifccParser::AddSubContext *ctx)
-{
+antlrcpp::Any CodeGenVisitor::visitAddSub(ifccParser::AddSubContext *ctx) {
   std::string op = ctx->op->getText(); // Récupère l'opérateur du nœud courant
 
   if (op == "+")
@@ -225,17 +189,39 @@ antlrcpp::Any CodeGenVisitor::visitAddSub(ifccParser::AddSubContext *ctx)
   return 0;
 }
 
-antlrcpp::Any CodeGenVisitor::visitParens(ifccParser::ParensContext *ctx)
-{
+antlrcpp::Any CodeGenVisitor::visitParens(ifccParser::ParensContext *ctx) {
   std::cerr << "[DEBUG] Generating code for parenthesized expression: "
             << ctx->getText() << "\n";
   return visit(ctx->expr());
 }
 
 antlrcpp::Any
-CodeGenVisitor::visitOperandExpr(ifccParser::OperandExprContext *ctx)
-{
+CodeGenVisitor::visitOperandExpr(ifccParser::OperandExprContext *ctx) {
   std::cerr << "[DEBUG] Generating code for operand expression: "
             << ctx->getText() << "\n";
   return visit(ctx->operand());
 }
+
+antlrcpp::Any CodeGenVisitor::visitFuncCall(ifccParser::FuncCallContext *ctx) {
+    std::string functionName = ctx->ID()->getText();
+
+    int argIndex = 0;
+    std::vector<std::string> registers = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
+
+    for (auto expr : ctx->expr()) {
+        visit(expr);
+
+        if (argIndex < registers.size()) {
+            std::cout << "    movq %rax, " << registers[argIndex] << "\n";
+        } else {
+            std::cerr << "Error: Too many arguments for function '" << functionName << "'.\n";
+            exit(1);
+        }
+        argIndex++;
+    }
+
+    std::cout << "    call " << functionName << "\n";
+
+    return 0;
+}
+
