@@ -74,7 +74,7 @@ clean:
 	rm exec exec.o exec.s
 
 exec: default
-	./ifcc ../tests/testfiles/10_fonction.c > exec.s
+	./ifcc test.c > exec.s
 	gcc exec.s
 
 
