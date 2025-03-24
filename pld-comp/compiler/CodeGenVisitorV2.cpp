@@ -94,17 +94,23 @@ antlrcpp::Any CodeGenVisitorV2::visitMulDiv(ifccParser::MulDivContext *ctx)
 
 antlrcpp::Any CodeGenVisitorV2::visitAddSub(ifccParser::AddSubContext *ctx)
 {
+    // Evaluate left operand (a) into %eax
     visit(ctx->expr(0));
+    // Save left operand into a temporary variable
     string temp = cfg->create_new_tempvar(Type::INT);
     cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {temp, "%eax"});
+    // Evaluate right operand (b) into %eax
     visit(ctx->expr(1));
+
     if (ctx->getText().find("+") != string::npos)
     {
-        cfg->current_bb->add_IRInstr(IRInstr::add, Type::INT, {"%eax", temp, "%eax"});
+        cfg->current_bb->add_IRInstr(IRInstr::add, Type::INT, {"%eax", "%eax", temp});
     }
     else
     {
-        cfg->current_bb->add_IRInstr(IRInstr::sub, Type::INT, {"%eax", temp, "%eax"});
+        string tempB = cfg->create_new_tempvar(Type::INT);
+        cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {tempB, "%eax"});
+        cfg->current_bb->add_IRInstr(IRInstr::sub, Type::INT, {"%eax", temp, tempB});
     }
     return 0;
 }
