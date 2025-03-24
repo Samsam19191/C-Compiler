@@ -33,6 +33,7 @@ public:
 		add,
 		sub,
 		mul,
+		div_op,
 		mov,
 		rmem,
 		wmem,

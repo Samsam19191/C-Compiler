@@ -77,20 +77,49 @@ antlrcpp::Any CodeGenVisitorV2::visitOperandExpr(ifccParser::OperandExprContext 
 
 antlrcpp::Any CodeGenVisitorV2::visitMulDiv(ifccParser::MulDivContext *ctx)
 {
-    visit(ctx->expr(1));
-    string temp = cfg->create_new_tempvar(Type::INT);
-    cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {temp, "%eax"});
-    visit(ctx->expr(0));
     if (ctx->getText().find("*") != string::npos)
     {
+        // Évaluation de l'opérande gauche (premier facteur) dans %eax
+        visit(ctx->expr(0));
+        
+        // Sauvegarde de l'opérande gauche dans une variable temporaire
+        string temp = cfg->create_new_tempvar(Type::INT);
+        cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {temp, "%eax"});
+        
+        // Évaluation de l'opérande droite (second facteur) dans %eax
+        visit(ctx->expr(1));
+        
+        // Génération de l'instruction de multiplication :
+        // Le résultat de l'opérande droite est dans %eax, et l'opérande gauche est sauvegardée dans temp.
+        // L'instruction générée sera, par exemple, "movl temp, %eax" suivie de "imull %eax, %eax",
+        // ce qui donne %eax = (%eax) * (valeur sauvegardée dans temp)
         cfg->current_bb->add_IRInstr(IRInstr::mul, Type::INT, {"%eax", "%eax", temp});
     }
     else
     {
-        cfg->current_bb->add_IRInstr(IRInstr::call, Type::INT, {"div", "%eax", temp});
+        // Division
+        // 1. Évaluer l'opérande gauche (dividende) dans %eax
+        visit(ctx->expr(0));
+        // Sauvegarder le dividende dans une variable temporaire
+        string tempDividend = cfg->create_new_tempvar(Type::INT);
+        cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {tempDividend, "%eax"});
+        
+        // 2. Évaluer l'opérande droite (diviseur) dans %eax
+        visit(ctx->expr(1));
+        // Sauvegarder le diviseur dans une autre variable temporaire
+        string tempDivisor = cfg->create_new_tempvar(Type::INT);
+        cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {tempDivisor, "%eax"});
+        
+        // 3. Restaurer le dividende dans %eax
+        cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {"%eax", tempDividend});
+        
+        // 4. Générer l'instruction de division avec le diviseur sauvegardé
+        // L'opération div_op devra générer "cltd" suivi de "idivl <adresse_du_diviseur>"
+        cfg->current_bb->add_IRInstr(IRInstr::div_op, Type::INT, {tempDivisor});
     }
     return 0;
 }
+
 
 antlrcpp::Any CodeGenVisitorV2::visitAddSub(ifccParser::AddSubContext *ctx)
 {

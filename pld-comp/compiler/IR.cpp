@@ -57,6 +57,7 @@ void IRInstr::gen_asm(ostream &o)
     case mul:
         o << "mul";
         break;
+    
     case rmem:
         o << "rmem";
         break;
@@ -86,6 +87,11 @@ void IRInstr::gen_asm(ostream &o)
     {
         o << " " << p;
     }
+    auto conv = [this](const string &op) -> string {
+        if (!op.empty() && (op[0] == '%' || op[0] == '$'))
+            return op;
+        return bb->cfg->IR_reg_to_asm(op);
+    };
 
     // Traduction en code assembleur pour la cible x86 (exemple)
     if (target_arch == "x86")
@@ -112,6 +118,12 @@ void IRInstr::gen_asm(ostream &o)
         case mul:
             o << "\n    movl " << params[1] << ", " << params[0] << "\n";
             o << "    imull " << params[2] << ", " << params[0] << "\n";
+            break;
+        case div_op:
+            // Pour la division :
+            // Le dividende doit être dans %eax, et on étend le signe avec cltd avant d'appeler idivl.
+            o << "\n    cltd\n";
+            o << "    idivl " << params[0] << "\n";
             break;
         case call:
             // Pour un appel, on émet simplement l'instruction call
