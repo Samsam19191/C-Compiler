@@ -59,10 +59,13 @@ antlrcpp::Any CodeGenVisitorV2::visitOperand(ifccParser::OperandContext *ctx)
         string varName = ctx->ID()->getText();
         if (symbolTable.find(varName) == symbolTable.end())
         {
-            cerr << "Error: Undefined variable '" << varName << "' during code generation." << endl;
+            cerr << "Error: Undefined variable '" << varName
+                 << "' during code generation." << endl;
             exit(1);
         }
-        cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {"%eax", varName});
+        // Convert the variable name to its offset string (e.g., "-4(%rbp)")
+        string offset = to_string(symbolTable[varName]) + "(%rbp)";
+        cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {"%eax", offset});
     }
     return 0;
 }
