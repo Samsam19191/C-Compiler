@@ -36,9 +36,9 @@ antlrcpp::Any CodeGenVisitorV2::visitAssignment(ifccParser::AssignmentContext *c
         exit(1);
     }
     // Build the offset string using BP_REG placeholder.
-    string offset = to_string(symbolTable[varName]) + "(" + BP_REG + ")";
+    string offset = to_string(symbolTable[varName]);
     visit(ctx->expr());
-    cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {offset, ACC_REG});
+    cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {ACC_REG, BP_REG, offset});
     return 0;
 }
 
@@ -66,8 +66,8 @@ antlrcpp::Any CodeGenVisitorV2::visitOperand(ifccParser::OperandContext *ctx)
             exit(1);
         }
         // Convert the variable name to its offset string using BP_REG.
-        string offset = to_string(symbolTable[varName]) + "(" + BP_REG + ")";
-        cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {ACC_REG, offset});
+        string offset = to_string(symbolTable[varName]);
+        cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {ACC_REG, BP_REG, offset});
     }
     return 0;
 }

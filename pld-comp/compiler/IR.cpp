@@ -11,9 +11,9 @@ using std::to_string;
 
 string target_arch = "ARM"; // Cible par défaut
 
-string ACC_REG = "%eax";
-string BP_REG = "%rbp";
-string RDI_REG = "%rdi";
+string ACC_REG = "x0";
+string BP_REG = "x29";
+string RDI_REG = "x0";
 
 /* ========================
    Implémentation de IRInstr
@@ -21,6 +21,14 @@ string RDI_REG = "%rdi";
 IRInstr::IRInstr(BasicBlock *bb_, Operation op, Type t, vector<string> params)
     : bb(bb_), op(op), t(t), params(params)
 {
+}
+
+bool is_ARM_register(string param) {
+    return param[0] == 'x' || param[0] == 'w';  // ARM64 registers
+}
+
+bool is_ARM_memory(string param, string offset) {
+    return param[0] == '-' || param == "sp";  // Stack or negative offset (local variable)
 }
 
 void IRInstr::gen_asm(ostream &o)
@@ -92,38 +100,36 @@ void IRInstr::gen_asm(ostream &o)
     }
 
     // Traduction en code assembleur pour la cible x86 (exemple)
-    if (target_arch == "x86")
-    {
-        switch (op)
-        {
-        case ldconst:
-            // params: [dest, constant]
-            o << "\n    movl $" << params[1] << ", " << params[0] << "\n";
-            break;
-        case copy:
-            // params: [dest, src]
-            o << "\n    movl " << params[1] << ", " << params[0] << "\n";
-            break;
-        case add:
-            // params: [dest, src1, src2]
-            o << "\n    movl " << params[1] << ", " << params[0] << "\n";
-            o << "    addl " << params[2] << ", " << params[0] << "\n";
-            break;
-        case sub:
-            o << "\n    movl " << params[1] << ", " << params[0] << "\n";
-            o << "    subl " << params[2] << ", " << params[0] << "\n";
-            break;
-        case mul:
-            o << "\n    movl " << params[1] << ", " << params[0] << "\n";
-            o << "    imull " << params[2] << ", " << params[0] << "\n";
-            break;
-        case call:
-            // Pour un appel, on émet simplement l'instruction call
-            o << "\n    call " << params[0] << "\n";
-            break;
-        default:
-            o << "\n    # Opération non implémentée\n";
-            break;
+    if (target_arch == "x86") {
+        switch(op) {
+            case ldconst:
+                // params: [dest, constant]
+                o << "\n    movl $" << params[1] << ", " << params[0] << "\n";
+                break;
+            case copy:
+                // params: [dest, src, offset]
+                o << "\n    movl " << params[2] << "(" << params[1] << "), " << params[0] << "\n";
+                break;
+            case add:
+                // params: [dest, src1, src2]
+                o << "\n    movl " << params[1] << ", " << params[0] << "\n";
+                o << "    addl " << params[2] << ", " << params[0] << "\n";
+                break;
+            case sub:
+                o << "\n    movl " << params[1] << ", " << params[0] << "\n";
+                o << "    subl " << params[2] << ", " << params[0] << "\n";
+                break;
+            case mul:
+                o << "\n    movl " << params[1] << ", " << params[0] << "\n";
+                o << "    imull " << params[2] << ", " << params[0] << "\n";
+                break;
+            case call:
+                // Pour un appel, on émet simplement l'instruction call
+                o << "\n    call " << params[0] << "\n";
+                break;
+            default:
+                o << "\n    # Opération non implémentée\n";
+                break;
         }
     }
     else if (target_arch == "ARM") {
@@ -132,7 +138,19 @@ void IRInstr::gen_asm(ostream &o)
                 o << "\n    mov " << params[0] << ", #" << params[1] << "\n";
                 break;
             case copy:
-                o << "\n    mov " << params[0] << ", " << params[1] << "\n";
+                // params: [dest, src, offset]
+                if (is_ARM_register(params[0]) && is_ARM_memory(params[1], params[2])) {
+                    // Memory to register (ldr equivalent)
+                    o << "\n    ldr " << params[0] << ", [" << params[1] << ", #" << params[2] << "]\n";
+                }
+                else if (is_ARM_memory(params[0], params[2]) && is_ARM_register(params[1])) {
+                    // Register to memory (str equivalent)
+                    o << "\n    str " << params[1] << ", [" << params[0] << ", #" << params[2] << "]\n";
+                }
+                else {
+                    // Register to register (mov equivalent)
+                    o << "\n    mov " << params[0] << ", " << params[1] << "\n";
+                }
                 break;
             case add:
                 o << "\n    add " << params[0] << ", " << params[1] << ", " << params[2] << "\n";
@@ -141,46 +159,60 @@ void IRInstr::gen_asm(ostream &o)
                 o << "\n    sub " << params[0] << ", " << params[1] << ", " << params[2] << "\n";
                 break;
             case mul:
+                // ARM64 syntax for multiplication
                 o << "\n    mul " << params[0] << ", " << params[1] << ", " << params[2] << "\n";
                 break;
+            case rmem:
+                // Load from memory: `ldr destination, [base, offset]`
+                o << "\n    ldr " << params[0] << ", [" << params[1] << ", #" << params[2] << "]\n";
+                break;
+            case wmem:
+                // Store to memory: `str source, [base, offset]`
+                o << "\n    str " << params[0] << ", [" << params[1] << ", #" << params[2] << "]\n";
+                break;
             case call:
-                o << "\n    bl " << params[0] << "\n"; // Branch with link (function call)
+                // Function call with branch link
+                o << "\n    bl " << params[0] << "\n";
                 break;
             default:
-                o << "\n    // Operation not implemented for ARM64\n";
+                o << "\n    // Not implemented for ARM64\n";
                 break;
         }
-    } 
-    
+    }
+    // **MSP430 Assembly Generation**
     else if (target_arch == "MSP430") {
         switch(op) {
             case ldconst:
-                o << "\n    mov #" << params[1] << ", " << params[0] << "\n";
+                o << "\n    mov.w #" << params[1] << ", " << params[0] << "\n";
                 break;
             case copy:
-                o << "\n    mov " << params[1] << ", " << params[0] << "\n";
+                o << "\n    mov.w " << params[1] << ", " << params[0] << "\n";
                 break;
             case add:
-                o << "\n    add " << params[1] << ", " << params[0] << "\n";
+                o << "\n    add.w " << params[1] << ", " << params[0] << "\n";
                 break;
             case sub:
-                o << "\n    sub " << params[1] << ", " << params[0] << "\n";
+                o << "\n    sub.w " << params[1] << ", " << params[0] << "\n";
                 break;
             case mul:
-                o << "\n    call #__mspabi_mpy16\n"; // MSP430 requires special function for multiplication
+                // MSP430 lacks direct multiplication; call a helper function
+                o << "\n    mov.w " << params[1] << ", R12\n"; // Load first operand
+                o << "\n    mov.w " << params[2] << ", R13\n"; // Load second operand
+                o << "\n    call #__mspabi_mpy16\n"; // Call multiplication helper
+                o << "\n    mov.w R12, " << params[0] << "\n"; // Store result
                 break;
             case call:
                 o << "\n    call " << params[0] << "\n";
                 break;
             default:
-                o << "\n    ; Operation not implemented for MSP430\n";
+                o << "\n    ; Not implemented for MSP430\n";
                 break;
         }
     }
-    // Pour ARM ou MSP430, vous adapterez ici les instructions.
 
     o << "\n";
 }
+    // Pour ARM ou MSP430, vous adapterez ici les instructions.
 
 /* ========================
    Implémentation de BasicBlock
@@ -324,7 +356,7 @@ string CFG::create_new_tempvar(Type t)
 {
     int offset = nextFreeSymbolIndex;
     nextFreeSymbolIndex += 4;
-    return "-" + to_string(offset) + "(%rbp)";
+    return "-" + to_string(offset) + BP_REG;
 }
 
 int CFG::get_var_index(string name)
