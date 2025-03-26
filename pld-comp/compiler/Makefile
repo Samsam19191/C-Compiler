@@ -72,6 +72,13 @@ clean:
 	rm -f ifcc
 	rm exec exec.o exec.s
 
+exec: default
+	./ifcc ../tests/testfiles/10_fonction.c > exec.s
+	gcc exec.s
+
+
+	rm exec exec.o exec.s
+
 exec: $(FILE)
 	./ifcc $(FILE) > exec.s
 	as -o exec.o exec.s
