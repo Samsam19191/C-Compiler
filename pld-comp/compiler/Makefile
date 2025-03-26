@@ -77,6 +77,7 @@ exec: default
 	gcc exec.s
 
 
+	rm exec exec.o exec.s
 
 exec: $(FILE)
 	./ifcc $(FILE) > exec.s
