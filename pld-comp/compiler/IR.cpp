@@ -9,7 +9,7 @@ using namespace std;
 using std::runtime_error;
 using std::to_string;
 
-string target_arch = "ARM"; // Cible par défaut
+string target_arch = "x86"; // Cible par défaut
 
 string ACC_REG = "x0";
 string BP_REG = "x29";
@@ -69,6 +69,7 @@ void IRInstr::gen_asm(ostream &o)
     case mul:
         o << "mul";
         break;
+    
     case rmem:
         o << "rmem";
         break;
@@ -98,37 +99,101 @@ void IRInstr::gen_asm(ostream &o)
     {
         o << " " << p;
     }
+    auto conv = [this](const string &op) -> string {
+        if (!op.empty() && (op[0] == '%' || op[0] == '$'))
+            return op;
+        return bb->cfg->IR_reg_to_asm(op);
+    };
 
     // Traduction en code assembleur pour la cible x86 (exemple)
-    if (target_arch == "x86") {
+    if (target_arch == "x86")
+    {
+        switch (op)
+        {
+        case ldconst:
+            // params: [dest, constant]
+            o << "\n    movl $" << params[1] << ", " << params[0] << "\n";
+            break;
+        case copy:
+            // params: [dest, src]
+            o << "\n    movl " << params[1] << ", " << params[0] << "\n";
+            break;
+        case add:
+            // params: [dest, src1, src2]
+            o << "\n    movl " << params[1] << ", " << params[0] << "\n";
+            o << "    addl " << params[2] << ", " << params[0] << "\n";
+            break;
+        case sub:
+            o << "\n    movl " << params[1] << ", " << params[0] << "\n";
+            o << "    subl " << params[2] << ", " << params[0] << "\n";
+            break;
+        case mul:
+            o << "\n    movl " << params[1] << ", " << params[0] << "\n";
+            o << "    imull " << params[2] << ", " << params[0] << "\n";
+            break;
+        case div_op:
+            // Pour la division :
+            // Le dividende doit être dans %eax, et on étend le signe avec cltd avant d'appeler idivl.
+            o << "\n    cltd\n";
+            o << "    idivl " << params[0] << "\n";
+            break;
+        case call:
+            // Pour un appel, on émet simplement l'instruction call
+            o << "\n    call " << params[0] << "\n";
+            break;
+        default:
+            o << "\n    # Opération non implémentée\n";
+            break;
+        }
+    }
+    else if (target_arch == "ARM") {
         switch(op) {
             case ldconst:
-                // params: [dest, constant]
-                o << "\n    movl $" << params[1] << ", " << params[0] << "\n";
+                o << "\n    mov " << params[0] << ", #" << params[1] << "\n";
                 break;
             case copy:
-                // params: [dest, src, offset]
-                o << "\n    movl " << params[2] << "(" << params[1] << "), " << params[0] << "\n";
+                o << "\n    mov " << params[0] << ", " << params[1] << "\n";
                 break;
             case add:
-                // params: [dest, src1, src2]
-                o << "\n    movl " << params[1] << ", " << params[0] << "\n";
-                o << "    addl " << params[2] << ", " << params[0] << "\n";
+                o << "\n    add " << params[0] << ", " << params[1] << ", " << params[2] << "\n";
                 break;
             case sub:
-                o << "\n    movl " << params[1] << ", " << params[0] << "\n";
-                o << "    subl " << params[2] << ", " << params[0] << "\n";
+                o << "\n    sub " << params[0] << ", " << params[1] << ", " << params[2] << "\n";
                 break;
             case mul:
-                o << "\n    movl " << params[1] << ", " << params[0] << "\n";
-                o << "    imull " << params[2] << ", " << params[0] << "\n";
+                o << "\n    mul " << params[0] << ", " << params[1] << ", " << params[2] << "\n";
                 break;
             case call:
-                // Pour un appel, on émet simplement l'instruction call
+                o << "\n    bl " << params[0] << "\n"; // Branch with link (function call)
+                break;
+            default:
+                o << "\n    // Operation not implemented for ARM64\n";
+                break;
+        }
+    } 
+    
+    else if (target_arch == "MSP430") {
+        switch(op) {
+            case ldconst:
+                o << "\n    mov #" << params[1] << ", " << params[0] << "\n";
+                break;
+            case copy:
+                o << "\n    mov " << params[1] << ", " << params[0] << "\n";
+                break;
+            case add:
+                o << "\n    add " << params[1] << ", " << params[0] << "\n";
+                break;
+            case sub:
+                o << "\n    sub " << params[1] << ", " << params[0] << "\n";
+                break;
+            case mul:
+                o << "\n    call #__mspabi_mpy16\n"; // MSP430 requires special function for multiplication
+                break;
+            case call:
                 o << "\n    call " << params[0] << "\n";
                 break;
             default:
-                o << "\n    # Opération non implémentée\n";
+                o << "\n    ; Operation not implemented for MSP430\n";
                 break;
         }
     }
