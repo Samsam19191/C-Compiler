@@ -104,7 +104,6 @@ antlrcpp::Any CodeGenVisitorV2::visitAddSub(ifccParser::AddSubContext *ctx)
     cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {temp, ACC_REG});
     // Evaluate right operand (b) into ACC_REG
     visit(ctx->expr(1));
-
     if (ctx->getText().find("+") != string::npos)
     {
         cfg->current_bb->add_IRInstr(IRInstr::add, Type::INT, {ACC_REG, ACC_REG, temp});
@@ -135,10 +134,7 @@ antlrcpp::Any CodeGenVisitorV2::visitFuncCall(ifccParser::FuncCallContext *ctx)
     {
         visit(expr);
         if (argIndex < registers.size())
-        {
             string reg = registers[argIndex];
-            cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {reg, ACC_REG});
-            argRegs.push_back(reg);
         }
         else
         {
