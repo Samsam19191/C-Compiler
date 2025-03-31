@@ -1,5 +1,3 @@
-#include <stdio.h>
-
 int main() {
     int x=17;
     int y=42;
