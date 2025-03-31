@@ -7,3 +7,4 @@ tests/ifcc-test-output
 antlr/
 compiler/config.mk
 install-antlr.sh
+pld-compp/compiler/test.c

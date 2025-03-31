@@ -44,15 +44,19 @@ SymbolTableVisitor::visitDeclaration(ifccParser::DeclarationContext *ctx)
     }
 
     // offset by 1 if char
+   // Nouvelle version : stocker des offsets positifs
     if (type == "char")
     {
-      currentOffset -= 1;
+      currentOffset += 1;
+      symbolTable[varName->getText()] = currentOffset;
     }
     else
     {
-      currentOffset -= 4;
-    }
-    symbolTable[varName->getText()] = currentOffset;
+      currentOffset += 4;
+      symbolTable[varName->getText()] = currentOffset;
+}
+
+
 
     // only visit the right-hand side of the expression if it exists
     if (assignments)
@@ -74,15 +78,12 @@ SymbolTableVisitor::visitOperandExpr(ifccParser::OperandExprContext *ctx)
 }
 
 antlrcpp::Any
-SymbolTableVisitor::visitOperand(ifccParser::OperandContext *ctx)
-{
-  if (ctx->ID())
-  {
+SymbolTableVisitor::visitOperand(ifccParser::OperandContext *ctx) {
+  if (ctx->ID()) {
     std::string varName = ctx->ID()->getText();
 
     // Check if variable was declared before being used
-    if (symbolTable.find(varName) == symbolTable.end())
-    {
+    if (symbolTable.find(varName) == symbolTable.end()) {
       std::cerr << "Error: Variable '" << varName
                 << "' is used before being declared.\n";
       exit(1);

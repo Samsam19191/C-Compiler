@@ -11,9 +11,9 @@ using std::to_string;
 
 string target_arch = "x86"; // Cible par défaut
 
-string ACC_REG = "x0";
-string BP_REG = "x29";
-string RDI_REG = "x0";
+string ACC_REG = "%eax";
+string BP_REG = "%rbp";
+string RDI_REG = "%rdi";
 
 /* ========================
    Implémentation de IRInstr
@@ -112,10 +112,23 @@ void IRInstr::gen_asm(ostream &o)
                 // params: [dest, constant]
                 o << "\n    movl $" << params[1] << ", " << params[0] << "\n";
                 break;
-            case copy:
-                // params: [dest, src, offset]
-                o << "\n    movl " << params[2] << "(" << params[1] << "), " << params[0] << "\n";
+            case rmem:
+                // params: [dest, base register, offset]
+                if (params[2].find('(') != string::npos)
+                    o << "\n    movl " << params[2] << ", " << params[0] << "\n";
+                else
+                    o << "\n    movl " << params[2] << "(" << params[1] << "), " << params[0] << "\n";
                 break;
+            
+            case copy:
+                // params: [source, base register, offset]
+                // Si params[2] contient déjà une parenthèse, on le considère déjà formaté.
+                if (params[2].find('(') != string::npos)
+                    o << "\n    movl " << params[0] << ", " << params[2] << "\n";
+                else
+                    o << "\n    movl " << params[0] << ", " << params[2] << "(" << params[1] << ")\n";
+                break;   
+            
             case add:
                 // params: [dest, src1, src2]
                 o << "\n    movl " << params[1] << ", " << params[0] << "\n";
@@ -338,7 +351,7 @@ void BasicBlock::gen_asm(ostream &o)
    Implémentation de CFG
    ======================== */
 CFG::CFG(DefFonction *ast)
-    : ast(ast), nextFreeSymbolIndex(0), nextBBnumber(0), current_bb(nullptr)
+    : ast(ast), nextFreeSymbolIndex(4), nextBBnumber(0), current_bb(nullptr)
 {
 }
 
@@ -350,6 +363,10 @@ void CFG::add_bb(BasicBlock *bb)
 
 string CFG::IR_reg_to_asm(string reg)
 {
+    // Si reg est déjà au format "-<offset>(%rbp)", on le retourne directement.
+    if (reg.find('(') != string::npos) {
+         return reg;
+    }
     if (target_arch == "x86")
     {
         int index = get_var_index(reg);
@@ -360,6 +377,7 @@ string CFG::IR_reg_to_asm(string reg)
         return reg;
     }
 }
+
 
 void CFG::gen_asm_prologue(ostream &o)
 {
@@ -415,8 +433,11 @@ string CFG::create_new_tempvar(Type t)
 {
     int offset = nextFreeSymbolIndex;
     nextFreeSymbolIndex += 4;
-    return "-" + to_string(offset) + BP_REG;
+    return "-" + to_string(offset) + "(%rbp)";
 }
+
+
+
 
 int CFG::get_var_index(string name)
 {

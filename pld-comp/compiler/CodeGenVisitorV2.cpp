@@ -12,10 +12,11 @@ CodeGenVisitorV2::~CodeGenVisitorV2() {}
 
 antlrcpp::Any CodeGenVisitorV2::visitProg(ifccParser::ProgContext *ctx)
 {
-    for (auto assignment : ctx->assignment())
-    {
-        visit(assignment);
+    for (auto stmt : ctx->statement()) 
+    { 
+        visit(stmt); 
     }
+
     visit(ctx->return_stmt());
     return 0;
 }
@@ -28,7 +29,7 @@ antlrcpp::Any CodeGenVisitorV2::visitReturn_stmt(ifccParser::Return_stmtContext 
 
 antlrcpp::Any CodeGenVisitorV2::visitAssignment(ifccParser::AssignmentContext *ctx)
 {
-    string varName = ctx->ID()->getText();
+    string varName = ctx->ID(0)->getText();
     if (symbolTable.find(varName) == symbolTable.end())
     {
         cerr << "Error: Undefined variable '" << varName
@@ -36,22 +37,22 @@ antlrcpp::Any CodeGenVisitorV2::visitAssignment(ifccParser::AssignmentContext *c
         exit(1);
     }
     // Build the offset string using BP_REG placeholder.
-    string offset = to_string(symbolTable[varName]);
-    visit(ctx->expr());
+    string offset = "-" + to_string(symbolTable[varName]);
+    visit(ctx->expr(0));
     cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {ACC_REG, BP_REG, offset});
     return 0;
 }
 
 antlrcpp::Any CodeGenVisitorV2::visitOperand(ifccParser::OperandContext *ctx)
 {
-    if (ctx->CONST())
+    if (ctx->CONSTINT())
     {
-        int value = stoi(ctx->CONST()->getText());
+        int value = stoi(ctx->CONSTINT()->getText());
         cfg->current_bb->add_IRInstr(IRInstr::ldconst, Type::INT, {ACC_REG, to_string(value)});
     }
-    else if (ctx->CHAR())
+    else if (ctx->CONSTCHAR())
     {
-        string literal = ctx->CHAR()->getText();
+        string literal = ctx->CONSTCHAR()->getText();
         char c = literal[1];
         int value = static_cast<int>(c);
         cfg->current_bb->add_IRInstr(IRInstr::ldconst, Type::INT, {ACC_REG, to_string(value)});
@@ -66,8 +67,8 @@ antlrcpp::Any CodeGenVisitorV2::visitOperand(ifccParser::OperandContext *ctx)
             exit(1);
         }
         // Convert the variable name to its offset string using BP_REG.
-        string offset = to_string(symbolTable[varName]);
-        cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {ACC_REG, BP_REG, offset});
+        string offset = "-" + to_string(symbolTable[varName]);
+        cfg->current_bb->add_IRInstr(IRInstr::rmem, Type::INT, {ACC_REG, BP_REG, offset});
     }
     return 0;
 }
@@ -95,27 +96,30 @@ antlrcpp::Any CodeGenVisitorV2::visitMulDiv(ifccParser::MulDivContext *ctx)
 }
 
 
-antlrcpp::Any CodeGenVisitorV2::visitAddSub(ifccParser::AddSubContext *ctx)
-{
-    // Evaluate left operand (a) into ACC_REG
+antlrcpp::Any CodeGenVisitorV2::visitAddSub(ifccParser::AddSubContext *ctx) {
+    // Évaluer le premier opérande (a) dans ACC_REG
     visit(ctx->expr(0));
-    // Save left operand into a temporary variable
-    string temp = cfg->create_new_tempvar(Type::INT);
-    cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {temp, ACC_REG});
-    // Evaluate right operand (b) into ACC_REG
+    // Créer un temporaire déjà formaté, par exemple "-8(%rbp)"
+    string temp_addr = cfg->create_new_tempvar(Type::INT);
+    // Stocker la valeur de a dans le temporaire
+    cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {ACC_REG, BP_REG, temp_addr});
+
+    // Évaluer le second opérande (b) dans ACC_REG
     visit(ctx->expr(1));
-    if (ctx->getText().find("+") != string::npos)
-    {
-        cfg->current_bb->add_IRInstr(IRInstr::add, Type::INT, {ACC_REG, ACC_REG, temp});
-    }
-    else
-    {
-        string tempB = cfg->create_new_tempvar(Type::INT);
-        cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {tempB, ACC_REG});
-        cfg->current_bb->add_IRInstr(IRInstr::sub, Type::INT, {ACC_REG, temp, tempB});
+    // Pour l'addition, ajouter la valeur stockée dans le temporaire (a) à b
+    if (ctx->getText().find("+") != string::npos) {
+        cfg->current_bb->add_IRInstr(IRInstr::add, Type::INT, {ACC_REG, ACC_REG, temp_addr});
+    } else {
+        // Pour la soustraction, on traite de la même manière (sans reformater)
+        string tempB_addr = cfg->create_new_tempvar(Type::INT);
+        cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {ACC_REG, BP_REG, tempB_addr});
+        cfg->current_bb->add_IRInstr(IRInstr::sub, Type::INT, {ACC_REG, temp_addr, tempB_addr});
     }
     return 0;
 }
+
+
+
 
 antlrcpp::Any CodeGenVisitorV2::visitParens(ifccParser::ParensContext *ctx)
 {
@@ -130,19 +134,18 @@ antlrcpp::Any CodeGenVisitorV2::visitFuncCall(ifccParser::FuncCallContext *ctx)
     vector<string> registers = {RDI_REG, "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
     vector<string> argRegs;
 
-    for (auto expr : ctx->expr())
-    {
+    for (auto expr : ctx->expr()) {
         visit(expr);
-        if (argIndex < registers.size())
+        if (argIndex < registers.size()) {
             string reg = registers[argIndex];
-        }
-        else
-        {
+            argRegs.push_back(reg);
+        } else {
             cerr << "Error: Too many arguments for function '" << functionName << "'." << endl;
             exit(1);
         }
         argIndex++;
     }
+    
 
     vector<string> callParams;
     callParams.push_back(functionName);
@@ -154,3 +157,25 @@ antlrcpp::Any CodeGenVisitorV2::visitFuncCall(ifccParser::FuncCallContext *ctx)
     cfg->current_bb->add_IRInstr(IRInstr::call, Type::INT, callParams);
     return 0;
 }
+
+
+antlrcpp::Any CodeGenVisitorV2::visitDeclaration(ifccParser::DeclarationContext *ctx)
+{
+    int n = ctx->ID().size();
+    // Pour chaque variable déclarée
+    for (int i = 0; i < n; i++) {
+         // S'il y a une expression d'initialisation pour cette variable (i.e. i < nombre d'expressions)
+         if (i < ctx->expr().size()) {
+              // Évalue l'expression d'initialisation, le résultat est placé dans ACC_REG
+              visit(ctx->expr(i));
+              // Récupère le nom de la variable
+              string varName = ctx->ID(i)->getText();
+              // Construit le string d'offset à partir de la table des symboles (valeur positive)
+              string offset = "-" + to_string(symbolTable[varName]);
+              // Génére une instruction de store : copie la valeur de ACC_REG dans la mémoire à l'adresse offset(%rbp)
+              cfg->current_bb->add_IRInstr(IRInstr::copy, Type::INT, {ACC_REG, BP_REG, offset});
+         }
+    }
+    return 0;
+}
+

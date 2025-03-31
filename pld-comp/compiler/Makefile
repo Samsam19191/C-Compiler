@@ -58,7 +58,7 @@ generated/ifccParser.cpp: ifcc.g4
 # view the parse tree in a graphical window
 
 # Usage: `make gui FILE=path/to/your/file.c`
-FILE ?= ../tests/testfiles/fail_tests.c
+FILE ?= ../tests/testfiles/1_return42.c
 
 gui:
 	@mkdir -p generated build
@@ -71,3 +71,9 @@ gui:
 clean:
 	rm -rf build generated
 	rm -f ifcc
+	rm exec exec.o exec.s
+
+exec: default
+	./ifcc test.c > exec.s
+	gcc exec.s
+
