@@ -1,34 +1,108 @@
 grammar ifcc;
 
-axiom : prog EOF ;
+// =======================================================
+// Règles principales (Point d'entrée)
+// =======================================================
+prog
+    : (functionDefinition)+ EOF
+    ;
 
-prog : 'int' 'main' '(' ')' '{' (statement)* return_stmt '}' ;
+// =======================================================
+// Définition de fonctions et paramètres
+// =======================================================
+functionDefinition
+    : type Identifier '(' parameterList? ')' block
+    ;
 
-statement : assignment | declaration ; // Ajouter ici les autres types de statements (if, while, etc.)
+parameterList
+    : parameter (',' parameter)*
+    ;
 
-declaration : type ID (('=' expr)? (',' ID ('=' expr)?)*)? ';' ;
+parameter
+    : type Identifier
+    ;
 
-assignment : ID '=' expr (',' ID '=' expr)* ';' ;
+// =======================================================
+// Bloc d'instructions et instructions simples
+// =======================================================
+block
+    : '{' statement* '}'
+    ;
 
-type : 'int' | 'char' ;
+statement
+    : declaration ';'
+    | assignment ';'
+    | return_stmt ';'
+    | if_stmt
+    | while_stmt
+    | funcCall ';'
+    | block
+    ;
 
-expr : expr op=('*' | '/') expr   # MulDiv
-     | expr op=('+' | '-') expr   # AddSub
-     | funcCall                # CallFunction
-     | '(' expr ')'            # Parens
-     | operand                 # OperandExpr
-     ;
+// =======================================================
+// Déclarations et affectations
+// =======================================================
+declaration
+    : type Identifier (',' Identifier)* ('=' expr (',' expr)*)?
+    ;
 
-funcCall : ID '(' (expr (',' expr)*)? ')' ;
+assignment
+    : Identifier '=' expr
+    ;
 
-operand : CONSTINT | CONSTCHAR | ID ;
+// =======================================================
+// Retour de fonction
+// =======================================================
+return_stmt
+    : 'return' expr
+    ;
 
-return_stmt : RETURN expr ';' ;
+// =======================================================
+// Instructions de contrôle
+// =======================================================
+if_stmt
+    : 'if' '(' expr ')' statement ('else' statement)?
+    ;
 
-RETURN : 'return' ;
-CONSTINT  : [0-9]+ ;
-CONSTCHAR : '\'' ( ~['\\] | '\\' . ) '\'' ;
-ID     : [a-zA-Z][a-zA-Z0-9]* ;
-COMMENT : '/*' .*? '*/' -> skip ;
-DIRECTIVE : '#' .*? '\n' -> skip ;
-WS    : [ \t\r\n]+ -> skip ;
+while_stmt
+    : 'while' '(' expr ')' statement
+    ;
+
+// =======================================================
+// Expressions et appels de fonction
+// =======================================================
+expr
+    : expr op=('*'|'/') expr     # MulDiv
+    | expr op=('+'|'-') expr     # AddSub
+    | '(' expr ')'               # Parens
+    | funcCall                   # FuncCallExpr
+    | operand                    # OperandExpr
+    ;
+
+funcCall
+    : Identifier '(' (expr (',' expr)*)? ')'
+    ;
+
+operand
+    : Identifier
+    | CONSTINT
+    | CONSTCHAR
+    ;
+
+// =======================================================
+// Types et règles lexicales
+// =======================================================
+type
+    : 'int'
+    | 'char'
+    | 'void'
+    ;
+
+CONSTINT: [0-9]+;
+CONSTCHAR: '\'' . '\'';
+
+Identifier: [a-zA-Z_][a-zA-Z0-9_]*;
+
+WS: [ \t\r\n]+ -> skip;
+LINE_COMMENT: '//' ~[\r\n]* -> skip;
+BLOCK_COMMENT: '/*' .*? '*/' -> skip;

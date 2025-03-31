@@ -37,7 +37,7 @@ int main(int argn, const char **argv) {
   tokens.fill();
 
   ifccParser parser(&tokens);
-  tree::ParseTree *tree = parser.axiom();
+  tree::ParseTree *tree = parser.prog();
 
   if (parser.getNumberOfSyntaxErrors() != 0) {
     cerr << "error: syntax error during parsing" << endl;
@@ -49,9 +49,8 @@ int main(int argn, const char **argv) {
   stv.checkUnusedVariables(); // Check for unused variables
 
   CodeGenVisitor v;
-  v.setSymbolTable(stv.getSymbolTable()); // Transfer symbol table
-  v.setInitializedVariables(
-      stv.getInitializedVariables()); // Transfer initialized variables
+  v.setGlobalFuncTables(stv.getFunctionSymbolTables()); // Transfer symbol table
+  v.setInitializedVariables(stv.getInitializedVariables()); // Transfer initialized variables
   v.visit(tree);
 
   return 0;
