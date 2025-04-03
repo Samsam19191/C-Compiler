@@ -1,10 +1,6 @@
 compiler/build
 compiler/generated
-compiler/exec
-compiler/exec.s
-compiler/exec.o
-tests/ifcc-test-output
 antlr/
 compiler/config.mk
+Sujet.pdf
 install-antlr.sh
-pld-compp/compiler/test.c

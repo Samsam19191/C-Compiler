@@ -34,7 +34,6 @@ public:
     antlrcpp::Any visitAddSub(ifccParser::AddSubContext* ctx) override;
     antlrcpp::Any visitParens(ifccParser::ParensContext* ctx) override;
     antlrcpp::Any visitFuncCall(ifccParser::FuncCallContext* ctx) override;
-    antlrcpp::Any visitDeclaration(ifccParser::DeclarationContext* ctx) override;
     
 private:
     unordered_map<string,int> symbolTable;

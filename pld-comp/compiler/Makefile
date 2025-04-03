@@ -71,7 +71,7 @@ gui:
 clean:
 	rm -rf build generated
 	rm -f ifcc
-	rm exec exec.o exec.s
+	rm exec.s exec
 
 exec: default
 	./ifcc test.c > exec.s

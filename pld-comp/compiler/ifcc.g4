@@ -2,18 +2,12 @@ grammar ifcc;
 
 axiom : prog EOF ;
 
-prog : 'int' 'main' '(' ')' '{' (statement)* return_stmt '}' ;
+prog : 'int' 'main' '(' ')' '{' (assignment)* return_stmt '}' ;
 
-statement : assignment | declaration ; // Ajouter ici les autres types de statements (if, while, etc.)
+assignment : 'int' ID ('=' expr)? ';' ;
 
-declaration : type ID (('=' expr)? (',' ID ('=' expr)?)*)? ';' ;
-
-assignment : ID '=' expr (',' ID '=' expr)* ';' ;
-
-type : 'int' | 'char' ;
-
-expr : expr op=('*' | '/') expr   # MulDiv
-     | expr op=('+' | '-') expr   # AddSub
+expr : expr ('*' | '/') expr   # MulDiv
+     | expr ('+' | '-') expr   # AddSub
      | funcCall                # CallFunction
      | '(' expr ')'            # Parens
      | operand                 # OperandExpr
@@ -21,14 +15,13 @@ expr : expr op=('*' | '/') expr   # MulDiv
 
 funcCall : ID '(' (expr (',' expr)*)? ')' ;
 
-operand : CONSTINT | CONSTCHAR | ID ;
+operand : CONST | CHAR | ID ;
 
-// Retour de fonction
 return_stmt : RETURN expr ';' ;
 
 RETURN : 'return' ;
-CONSTINT  : [0-9]+ ;
-CONSTCHAR : '\'' ( ~['\\] | '\\' . ) '\'' ;
+CONST  : [0-9]+ ;
+CHAR : '\'' ( ~('\'' | '\\') | '\\' . ) '\'' ;
 ID     : [a-zA-Z][a-zA-Z0-9]* ;
 COMMENT : '/*' .*? '*/' -> skip ;
 DIRECTIVE : '#' .*? '\n' -> skip ;
