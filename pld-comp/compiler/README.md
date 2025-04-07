@@ -32,3 +32,4 @@ where `N` is a positive integer constant.
   You can (should)  change  those values to suit your installation, either
   by editing the  Makefile and/or adding another .mk file.
 
+faire un make clean, faire un make debug, visit statement, factoriser multiplication, faire test sur paranthèse, tester l'opérateur unaire.

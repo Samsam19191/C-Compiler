@@ -12,11 +12,12 @@ assignment : ID '=' expr (',' ID '=' expr)* ';' ;
 
 type : 'int' | 'char' ;
 
-expr : expr op=('*' | '/') expr   # MulDiv
-     | expr op=('+' | '-') expr   # AddSub
+expr : expr op=('&' | '|' | '^') expr  # BitOps
+     | expr op=('*' | '/' | '%') expr   # MulDiv
+     | expr op=('+' | '-') expr         # AddSub
      | funcCall                # CallFunction
-     | '(' expr ')'            # Parens
-     | operand                 # OperandExpr
+     | '(' expr ')'                     # Parens
+     | operand                          # OperandExpr
      ;
 
 funcCall : ID '(' (expr (',' expr)*)? ')' ;
