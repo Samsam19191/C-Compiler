@@ -55,6 +55,9 @@ int main(int argn, const char **argv)
   CFG *cfg = new CFG(defMain);
   cfg->setSymbolTable(stv.getSymbolTable());
 
+  // Définir la cible par défaut à x86
+  cfg->target = TargetArch::X86;
+
   CodeGenVisitor v;
   v.setSymbolTable(stv.getSymbolTable());
   v.setInitializedVariables(stv.getInitializedVariables());

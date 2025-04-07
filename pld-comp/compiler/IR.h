@@ -11,6 +11,12 @@
 #include "Type.h"               // Définition de Type
 #include "DefFonction.h"        // Définition complète de DefFonction
 
+enum class TargetArch
+{
+    X86,
+    ARM64
+};
+
 // Pas de forward declaration de DefFonction ici, puisque nous l'incluons déjà.
 
 class BasicBlock;
@@ -86,6 +92,8 @@ public:
     std::string create_new_tempvar(Type t);
     int get_var_index(std::string name);
     Type get_var_type(std::string name);
+
+    TargetArch target;
 
 protected:
     std::map<std::string, Type> SymbolType;
