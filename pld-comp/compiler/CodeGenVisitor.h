@@ -2,24 +2,29 @@
 
 #include "antlr4-runtime.h"
 #include "generated/ifccBaseVisitor.h"
+#include "IR.h" // Inclusion de notre IR
 #include <iostream>
 #include <unordered_map>
+#include <set>
 
-class CodeGenVisitor : public ifccBaseVisitor {
+class CodeGenVisitor : public ifccBaseVisitor
+{
 private:
-  std::unordered_map<std::string, int> symbolTable; // Stores variable offsets
-  std::set<std::string> initializedVariables; // Stores initialized variables
+  std::unordered_map<std::string, int> symbolTable; // Table des symboles
+  std::set<std::string> initializedVariables;       // Variables initialisées
+  CFG *cfg;                                         // Pointeur vers le CFG utilisé pour générer l'IR
 
 public:
-  // Copie la table des symboles depuis le visiteur de la table des symboles.
-  void setSymbolTable(const std::unordered_map<std::string, int> &table) {
+  void setSymbolTable(const std::unordered_map<std::string, int> &table)
+  {
     symbolTable = table;
   }
-  void setInitializedVariables(const std::set<std::string> &vars) {
-    initializedVariables =
-        vars; // Copy initialized variables from SymbolTableVisitor
+  void setInitializedVariables(const std::set<std::string> &vars)
+  {
+    initializedVariables = vars;
   }
-  // Méthodes override pour la génération de code.
+  void setCFG(CFG *cfg_) { cfg = cfg_; }
+
   virtual antlrcpp::Any visitProg(ifccParser::ProgContext *ctx) override;
   antlrcpp::Any visitStatement(ifccParser::StatementContext *ctx) override;
   antlrcpp::Any visitAssignment(ifccParser::AssignmentContext *ctx) override;
@@ -30,8 +35,6 @@ public:
   antlrcpp::Any visitAddSub(ifccParser::AddSubContext *ctx) override;
   antlrcpp::Any visitParens(ifccParser::ParensContext *ctx) override;
   antlrcpp::Any visitBitOps(ifccParser::BitOpsContext *ctx) override;
-  virtual antlrcpp::Any
-  visitReturn_stmt(ifccParser::Return_stmtContext *ctx) override;
-
+  virtual antlrcpp::Any visitReturn_stmt(ifccParser::Return_stmtContext *ctx) override;
   antlrcpp::Any visitFuncCall(ifccParser::FuncCallContext *ctx) override;
 };

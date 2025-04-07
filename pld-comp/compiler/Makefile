@@ -12,37 +12,38 @@ default: all
 all: ifcc
 
 ##########################################
-# link together all pieces of our compiler 
+# Link together all pieces of our compiler
 OBJECTS=build/ifccBaseVisitor.o \
 	build/ifccLexer.o \
 	build/ifccVisitor.o \
 	build/ifccParser.o \
 	build/main.o \
 	build/CodeGenVisitor.o \
-	build/SymbolTableVisitor.o
+	build/SymbolTableVisitor.o \
+	build/IR.o
 
 ifcc: $(OBJECTS)
 	@mkdir -p build
 	$(CC) $(LDFLAGS) build/*.o $(ANTLRLIB) -o ifcc
 
 ##########################################
-# compile our hand-writen C++ code: main(), CodeGenVisitor, etc.
+# Compile our hand-written C++ code: main(), CodeGenVisitor, etc.
 build/%.o: %.cpp generated/ifccParser.cpp
 	@mkdir -p build
 	$(CC) $(CCFLAGS) -MMD -o $@ $< 
 
 ##########################################
-# compile all the antlr-generated C++
+# Compile all the antlr-generated C++
 build/%.o: generated/%.cpp
 	@mkdir -p build
 	$(CC) $(CCFLAGS) -MMD -o $@ $< 
 
-# automagic dependency management: `gcc -MMD` generates all the .d files for us
+# Automagic dependency management: `gcc -MMD` generates all the .d files for us
 -include build/*.d
 build/%.d:
 
 ##########################################
-# generate the C++ implementation of our Lexer/Parser/Visitor
+# Generate the C++ implementation of our Lexer/Parser/Visitor
 generated/ifccLexer.cpp: generated/ifccParser.cpp
 generated/ifccVisitor.cpp: generated/ifccParser.cpp
 generated/ifccBaseVisitor.cpp: generated/ifccParser.cpp
@@ -50,12 +51,11 @@ generated/ifccParser.cpp: ifcc.g4
 	@mkdir -p generated
 	$(ANTLR) -visitor -no-listener -Dlanguage=Cpp -o generated ifcc.g4
 
-# prevent automatic cleanup of "intermediate" files like ifccLexer.cpp etc
+# Prevent automatic cleanup of "intermediate" files like ifccLexer.cpp etc
 .PRECIOUS: generated/ifcc%.cpp   
 
 ##########################################
-# view the parse tree in a graphical window
-
+# View the parse tree in a graphical window
 # Usage: `make gui FILE=path/to/your/file.c`
 FILE ?= ../tests/testfiles/fail_tests.c
 
@@ -66,7 +66,7 @@ gui:
 	java -cp $(ANTLRJAR):build org.antlr.v4.gui.TestRig ifcc axiom -gui $(FILE)
 
 ##########################################
-# delete all machine-generated files
+# Delete all machine-generated files
 clean:
 	rm -rf build generated
 	rm -f ifcc
@@ -75,8 +75,6 @@ clean:
 exec: default
 	./ifcc ../tests/testfiles/10_fonction.c > exec.s
 	gcc exec.s
-
-
 	rm exec exec.o exec.s
 
 exec: $(FILE)

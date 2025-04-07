@@ -3,56 +3,65 @@
 #include <iostream>
 #include <sstream>
 
-
 #include "CodeGenVisitor.h"
 #include "SymbolTableVisitor.h"
 #include "antlr4-runtime.h"
 #include "generated/ifccBaseVisitor.h"
 #include "generated/ifccLexer.h"
 #include "generated/ifccParser.h"
-
+#include "IR.h" // Pour CFG et DefFonction
 
 using namespace antlr4;
 using namespace std;
 
-int main(int argn, const char **argv) {
+int main(int argn, const char **argv)
+{
   stringstream in;
-  if (argn == 2) {
+  if (argn == 2)
+  {
     ifstream lecture(argv[1]);
-    if (!lecture.good()) {
+    if (!lecture.good())
+    {
       cerr << "error: cannot read file: " << argv[1] << endl;
       exit(1);
     }
     in << lecture.rdbuf();
-  } else {
+  }
+  else
+  {
     cerr << "usage: ifcc path/to/file.c" << endl;
     exit(1);
   }
 
   ANTLRInputStream input(in.str());
-
   ifccLexer lexer(&input);
   CommonTokenStream tokens(&lexer);
-
   tokens.fill();
 
   ifccParser parser(&tokens);
   tree::ParseTree *tree = parser.axiom();
 
-  if (parser.getNumberOfSyntaxErrors() != 0) {
+  if (parser.getNumberOfSyntaxErrors() != 0)
+  {
     cerr << "error: syntax error during parsing" << endl;
     exit(1);
   }
 
   SymbolTableVisitor stv;
   stv.visit(tree);
-  stv.checkUnusedVariables(); // Check for unused variables
+  stv.checkUnusedVariables();
+
+  DefFonction *defMain = new DefFonction("main");
+  CFG *cfg = new CFG(defMain);
+  cfg->setSymbolTable(stv.getSymbolTable());
 
   CodeGenVisitor v;
-  v.setSymbolTable(stv.getSymbolTable()); // Transfer symbol table
-  v.setInitializedVariables(
-      stv.getInitializedVariables()); // Transfer initialized variables
+  v.setSymbolTable(stv.getSymbolTable());
+  v.setInitializedVariables(stv.getInitializedVariables());
+  v.setCFG(cfg);
   v.visit(tree);
+
+  cfg->gen_asm(std::cout);
 
   return 0;
 }
