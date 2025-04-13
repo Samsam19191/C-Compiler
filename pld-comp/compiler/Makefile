@@ -2,7 +2,7 @@
 # Each student should have a config.mk corresponding to her system.
 # Examples are  ubuntu.mk, DI.mk, fedora.mk
 # Then config.mk should be in the .gitignore of your project
-include config.mk
+include configs/config.mk
 
 CC=g++
 CCFLAGS=-g -c -std=c++17 -I$(ANTLRINC) -Wno-attributes # -Wno-defaulted-function-deleted -Wno-unknown-warning-option
@@ -19,7 +19,9 @@ OBJECTS=build/ifccBaseVisitor.o \
 	build/ifccParser.o \
 	build/main.o \
 	build/CodeGenVisitor.o \
-	build/SymbolTableVisitor.o
+	build/VisitorErrorListener.o \
+	build/Type.o \
+	build/IR.o
 
 ifcc: $(OBJECTS)
 	@mkdir -p build
@@ -57,7 +59,7 @@ generated/ifccParser.cpp: ifcc.g4
 # view the parse tree in a graphical window
 
 # Usage: `make gui FILE=path/to/your/file.c`
-FILE ?= ../tests/testfiles/fail_tests.c
+FILE ?= ../tests/testfiles/1_return42.c
 
 gui:
 	@mkdir -p generated build
@@ -70,17 +72,3 @@ gui:
 clean:
 	rm -rf build generated
 	rm -f ifcc
-	rm exec exec.o exec.s
-
-exec: default
-	./ifcc ../tests/testfiles/10_fonction.c > exec.s
-	gcc exec.s
-
-
-	rm exec exec.o exec.s
-
-exec: $(FILE)
-	./ifcc $(FILE) > exec.s
-	as -o exec.o exec.s
-	gcc -o exec exec.o
-	rm exec.o

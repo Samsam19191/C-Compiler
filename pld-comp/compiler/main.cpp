@@ -3,14 +3,11 @@
 #include <iostream>
 #include <sstream>
 
-
-#include "CodeGenVisitor.h"
-#include "SymbolTableVisitor.h"
 #include "antlr4-runtime.h"
-#include "generated/ifccBaseVisitor.h"
 #include "generated/ifccLexer.h"
 #include "generated/ifccParser.h"
 
+#include "CodeGenVisitor.h"
 
 using namespace antlr4;
 using namespace std;
@@ -39,20 +36,28 @@ int main(int argn, const char **argv) {
   ifccParser parser(&tokens);
   tree::ParseTree *tree = parser.axiom();
 
-  if (parser.getNumberOfSyntaxErrors() != 0) {
+  if (lexer.getNumberOfSyntaxErrors() != 0 ||
+      parser.getNumberOfSyntaxErrors() != 0) {
     cerr << "error: syntax error during parsing" << endl;
     exit(1);
   }
 
-  SymbolTableVisitor stv;
-  stv.visit(tree);
-  stv.checkUnusedVariables(); // Check for unused variables
-
   CodeGenVisitor v;
-  v.setSymbolTable(stv.getSymbolTable()); // Transfer symbol table
-  v.setInitializedVariables(
-      stv.getInitializedVariables()); // Transfer initialized variables
   v.visit(tree);
+
+  auto cfgList = v.getCfgList();
+  for (auto cfg : cfgList) {
+    if (cfg->get_name() == "putchar" || cfg->get_name() == "getchar") {
+      continue;
+    }
+    cfg->gen_asm(cout);
+    cerr << cfg->get_name() << endl;
+    for (auto block : cfg->getBlocks()) {
+      for (auto instr : block->instrs) {
+        cerr << instr << endl;
+      }
+    }
+  }
 
   return 0;
 }

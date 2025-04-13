@@ -1,89 +1,39 @@
 #include "SymbolTableVisitor.h"
 
-// antlrcpp::Any
-// SymbolTableVisitor::visitAssignment(ifccParser::AssignmentContext *ctx) {
-
-//   std::vector<antlr4::tree::TerminalNode *> varNames = ctx->ID();
-//   std::vector<ifccParser::ExprContext *> exprs = ctx->expr();
-
-//   for (int i = 0; i < varNames.size(); i++) {
-//     std::string varName = varNames[i]->getText();
-//     ifccParser::ExprContext *expr = exprs[i];
-
-//     if (symbolTable.find(varName) != symbolTable.end()) {
-//       std::cerr << "Error: Variable '" << varName
-//                 << "' is declared multiple times.\n";
-//       exit(1);
-//     }
-
-//     symbolTable[varName] = currentOffset;
-//     currentOffset -= 4;
-
-//     visit(expr);
-//   }
-
-//   return 0;
-// }
+using namespace std;
 
 antlrcpp::Any
-SymbolTableVisitor::visitDeclaration(ifccParser::DeclarationContext *ctx)
-{
-  std::string type = ctx->type()->getText();
-  std::vector<antlr4::tree::TerminalNode *> varNames = ctx->ID();
-  std::vector<ifccParser::ExprContext *> exprs = ctx->expr();
-  int assignments = exprs.size();
-  for (int i = 0; i < varNames.size(); i++)
-  {
-    antlr4::tree::TerminalNode *varName = varNames[i];
+SymbolTableVisitor::visitAssignment(ifccParser::AssignmentContext *ctx) {
+  string varName = ctx->ID()->getText();
 
-    if (symbolTable.find(varName->getText()) != symbolTable.end())
-    {
-      std::cerr << "Error: Variable '" << varName->getText()
-                << "' is declared multiple times.\n";
-      exit(1);
-    }
-
-    // offset by 1 if char
-    if (type == "char")
-    {
-      currentOffset -= 1;
-    }
-    else
-    {
-      currentOffset -= 4;
-    }
-    symbolTable[varName->getText()] = currentOffset;
-
-    // only visit the right-hand side of the expression if it exists
-    if (assignments)
-    {
-      visit(exprs[i]);
-      initializedVariables.insert(varName->getText());
-    }
+  // Check if variable is already declared
+  if (symbolTable.find(varName) != symbolTable.end()) {
+    cerr << "Error: Variable '" << varName
+              << "' is declared multiple times.\n";
+    exit(1);
   }
 
+  // Assign an offset for the new variable
+  symbolTable[varName] = currentOffset;
+  currentOffset -= 4; // Move stack pointer down for the next variable
+
+  // cout << "[DEBUG] Assigned '" << varName << "' to offset "
+  //           << symbolTable[varName] << "\n";
+
+  // Visit the right-hand side of the assignment
+  visit(ctx->expr());
+
   return 0;
 }
 
 antlrcpp::Any
-SymbolTableVisitor::visitOperandExpr(ifccParser::OperandExprContext *ctx)
-{
-  // Visit the right-hand side of the expression
-  visit(ctx->operand());
-  return 0;
-}
-
-antlrcpp::Any
-SymbolTableVisitor::visitOperand(ifccParser::OperandContext *ctx)
-{
-  if (ctx->ID())
-  {
-    std::string varName = ctx->ID()->getText();
+SymbolTableVisitor::visitOperand(ifccParser::OperandContext *ctx) {
+  if (ctx->ID()) {
+    string varName = ctx->ID()->getText();
 
     // Check if variable was declared before being used
-    if (symbolTable.find(varName) == symbolTable.end())
-    {
-      std::cerr << "Error: Variable '" << varName
+    if (symbolTable.find(varName) == symbolTable.end()) {
+      cerr << "Error: Variable '" << varName
                 << "' is used before being declared.\n";
       exit(1);
     }
@@ -94,23 +44,20 @@ SymbolTableVisitor::visitOperand(ifccParser::OperandContext *ctx)
   return 0;
 }
 
-void SymbolTableVisitor::checkUnusedVariables()
-{
-  for (const auto &entry : symbolTable)
-  {
-    if (usedVariables.find(entry.first) == usedVariables.end())
-    {
-      std::cerr << "Warning: Variable '" << entry.first
+void SymbolTableVisitor::checkUnusedVariables() {
+  for (const auto &entry : symbolTable) {
+    if (usedVariables.find(entry.first) == usedVariables.end()) {
+      cerr << "Warning: Variable '" << entry.first
                 << "' is declared but never used.\n";
     }
   }
 }
 
 antlrcpp::Any SymbolTableVisitor::visitFuncCall(ifccParser::FuncCallContext *ctx) {
-    std::string functionName = ctx->ID()->getText();
+    string functionName = ctx->ID()->getText();
 
     if (functionName != "putchar" && functionName != "getchar") {
-        std::cerr << "Error: Undefined function '" << functionName << "'.\n";
+        cerr << "Error: Undefined function '" << functionName << "'.\n";
         exit(1);
     }
 
@@ -119,4 +66,15 @@ antlrcpp::Any SymbolTableVisitor::visitFuncCall(ifccParser::FuncCallContext *ctx
     }
 
     return 0;
+}
+
+antlrcpp::Any SymbolTableVisitor::visitVar_decl_stmt(ifccParser::Var_decl_stmtContext *ctx) {
+  for (auto member : ctx->var_decl_member()) {
+    string varName = member->ID()->getText();
+    // ... (code existant)
+    if (!member->expr()) {
+      cerr << "Warning: Variable '" << varName << "' is not initialized.\n";
+    }
+  }
+  return 0;
 }

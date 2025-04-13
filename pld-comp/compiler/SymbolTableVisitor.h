@@ -6,25 +6,22 @@
 #include <set>
 #include <unordered_map>
 
+using namespace std;
+
 class SymbolTableVisitor : public ifccBaseVisitor {
 private:
-  std::unordered_map<std::string, int>
+  unordered_map<string, int>
       symbolTable;                     // Variable name -> stack offset
-  std::set<std::string> usedVariables; // Variables that were accessed
-  int currentOffset = 0; // Start at (%rbp), move down for each variable
-  std::set<std::string> initializedVariables; // Variables that were initialized
+  set<string> usedVariables; // Variables that were accessed
+  int currentOffset = -4; // Start at -4(%rbp), move down for each variable
 
-      public :
-      // antlrcpp::Any visitAssignment(ifccParser::AssignmentContext *ctx)
-      // override;
-      antlrcpp::Any
-      visitDeclaration(ifccParser::DeclarationContext *ctx) override;
-  antlrcpp::Any visitOperandExpr(ifccParser::OperandExprContext *ctx) override;
+public:
+  antlrcpp::Any visitAssignment(ifccParser::AssignmentContext *ctx) override;
   antlrcpp::Any visitOperand(ifccParser::OperandContext *ctx) override;
   void checkUnusedVariables();
-  std::unordered_map<std::string, int> getSymbolTable() { return symbolTable; }
-  std::set<std::string> getInitializedVariables() { return initializedVariables; }
+  unordered_map<string, int> getSymbolTable() { return symbolTable; }
   antlrcpp::Any visitFuncCall(ifccParser::FuncCallContext *ctx) override;
+  antlrcpp!!Any visitVar_decl_stmt(ifccParser::Var_decl_stmtContext *ctx) override;
 
 };
 
