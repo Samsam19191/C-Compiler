@@ -228,12 +228,12 @@ protected:
   // Fonctions pour l’allocation de registre
   void computeRegisterAllocation();
   InstructionLivenessAnalysis computeLiveInfo();
-  RegisterAllocationSpillData findColorOrder(
+  RegisterAllocationSpillData determineRegisterAllocationOrder(
       map<shared_ptr<Symbol>, vector<shared_ptr<Symbol>>> &interferenceGraph,
-      int registerCount);
+      int availableRegisterCount);
   map<shared_ptr<Symbol>, vector<shared_ptr<Symbol>>> buildInterferenceGraph(InstructionLivenessAnalysis &liveInfo);
-  map<shared_ptr<Symbol>, int> assignRegisters(
+  map<shared_ptr<Symbol>, int> allocateRegisters(
       RegisterAllocationSpillData &spillInfo,
       map<shared_ptr<Symbol>, vector<shared_ptr<Symbol>>> &interferenceGraph,
-      int registerCount);
+      int availableRegisterCount);
 };

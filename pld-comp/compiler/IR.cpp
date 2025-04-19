@@ -1338,135 +1338,135 @@ Type CFG::get_var_type(string name)
  */
 InstructionLivenessAnalysis CFG::computeLiveInfo()
 {
-  InstructionLivenessAnalysis liveInfo;
-  bool stable = false;
+  InstructionLivenessAnalysis livenessAnalysis;
+  bool isStable = false;
 
   // Répète jusqu'à ce que l'analyse devienne stable (aucun changement dans les ensembles de vivacité)
-  while (!stable)
+  while (!isStable)
   {
-    stable = true;
-    set<BasicBlock *> visitedBB; // Ensemble des blocs visités
-    stack<BasicBlock *> visitOrder; // Ordre de visite des blocs
-    visitOrder.push(bbs[0]); // Commence par le premier bloc de base
+    isStable = true;
+    set<BasicBlock *> visitedBlocks; // Ensemble des blocs visités
+    stack<BasicBlock *> blocksToVisit; // Pile des blocs à visiter
+    blocksToVisit.push(bbs[0]); // Commence par le premier bloc de base
 
     // Parcourt les blocs de base dans l'ordre de visite
-    while (!visitOrder.empty())
+    while (!blocksToVisit.empty())
     {
-      BasicBlock *currentBB = visitOrder.top();
-      visitOrder.pop();
-      visitedBB.insert(currentBB);
+      BasicBlock *currentBlock = blocksToVisit.top();
+      blocksToVisit.pop();
+      visitedBlocks.insert(currentBlock);
 
       int instructionIndex = 0;
 
       // Parcourt les instructions du bloc courant
-      for (auto &instr : currentBB->instrs)
+      for (auto &instruction : currentBlock->instrs)
       {
-        set<shared_ptr<Symbol>> oldIn; // Variables vivantes avant l'instruction (ancienne version)
-        set<shared_ptr<Symbol>> oldOut; // Variables vivantes après l'instruction (ancienne version)
+        set<shared_ptr<Symbol>> previousInSet; // Variables vivantes avant l'instruction (ancienne version)
+        set<shared_ptr<Symbol>> previousOutSet; // Variables vivantes après l'instruction (ancienne version)
 
         // Récupère les ensembles de vivacité actuels
-        auto inPtr = liveInfo.liveVariablesBeforeInstruction.find(&instr);
-        auto outPtr = liveInfo.liveVariablesAfterInstruction.find(&instr);
-        if (inPtr != liveInfo.liveVariablesBeforeInstruction.end())
+        auto inSetIterator = livenessAnalysis.liveVariablesBeforeInstruction.find(&instruction);
+        auto outSetIterator = livenessAnalysis.liveVariablesAfterInstruction.find(&instruction);
+        if (inSetIterator != livenessAnalysis.liveVariablesBeforeInstruction.end())
         {
-          oldIn = inPtr->second;
+          previousInSet = inSetIterator->second;
         }
-        if (outPtr != liveInfo.liveVariablesAfterInstruction.end())
+        if (outSetIterator != livenessAnalysis.liveVariablesAfterInstruction.end())
         {
-          oldOut = outPtr->second;
+          previousOutSet = outSetIterator->second;
         }
 
         // Calcule les nouvelles variables vivantes avant l'instruction
-        set<shared_ptr<Symbol>> inUnion = oldOut;
-        liveInfo.liveVariablesBeforeInstruction[&instr] = instr.getUsedVariables();
-        for (auto &toRemove : instr.getDeclaredVariable())
+        set<shared_ptr<Symbol>> unionOutSet = previousOutSet;
+        livenessAnalysis.liveVariablesBeforeInstruction[&instruction] = instruction.getUsedVariables();
+        for (auto &declaredVar : instruction.getDeclaredVariable())
         {
-          inUnion.erase(toRemove); // Supprime les variables déclarées
+          unionOutSet.erase(declaredVar); // Supprime les variables déclarées
         }
-        for (auto &toAdd : inUnion)
+        for (auto &liveVar : unionOutSet)
         {
-          liveInfo.liveVariablesBeforeInstruction[&instr].insert(toAdd);
+          livenessAnalysis.liveVariablesBeforeInstruction[&instruction].insert(liveVar);
         }
 
         // Calcule les nouvelles variables vivantes après l'instruction
-        liveInfo.liveVariablesAfterInstruction[&instr].clear();
-        vector<IRInstr *> nextInstrs;
+        livenessAnalysis.liveVariablesAfterInstruction[&instruction].clear();
+        vector<IRInstr *> nextInstructions;
 
         // Ajoute la prochaine instruction du bloc si elle existe
-        if (instructionIndex + 1 < currentBB->instrs.size())
+        if (instructionIndex + 1 < currentBlock->instrs.size())
         {
-          nextInstrs.push_back(&currentBB->instrs[instructionIndex + 1]);
+          nextInstructions.push_back(&currentBlock->instrs[instructionIndex + 1]);
         }
         else
         {
           // Effectue une recherche BFS pour trouver les prochaines instructions possibles
-          set<BasicBlock *> bfsBB;
-          queue<BasicBlock *> visitOrder;
-          if (currentBB->exit_true != nullptr)
+          set<BasicBlock *> visitedInBFS;
+          queue<BasicBlock *> blocksToVisitInBFS;
+          if (currentBlock->exit_true != nullptr)
           {
-            visitOrder.push(currentBB->exit_true);
+            blocksToVisitInBFS.push(currentBlock->exit_true);
           }
-          if (currentBB->exit_false != nullptr)
+          if (currentBlock->exit_false != nullptr)
           {
-            visitOrder.push(currentBB->exit_false);
+            blocksToVisitInBFS.push(currentBlock->exit_false);
           }
-          while (!visitOrder.empty())
+          while (!blocksToVisitInBFS.empty())
           {
-            BasicBlock *currentVisitedBB = visitOrder.front();
-            visitOrder.pop();
-            bfsBB.insert(currentVisitedBB);
-            if (currentVisitedBB->instrs.size() > 0)
+            BasicBlock *visitedBlock = blocksToVisitInBFS.front();
+            blocksToVisitInBFS.pop();
+            visitedInBFS.insert(visitedBlock);
+            if (!visitedBlock->instrs.empty())
             {
-              nextInstrs.push_back(&currentVisitedBB->instrs[0]);
+              nextInstructions.push_back(&visitedBlock->instrs[0]);
             }
             else
             {
-              if (currentVisitedBB->exit_true != nullptr)
+              if (visitedBlock->exit_true != nullptr)
               {
-                visitOrder.push(currentVisitedBB->exit_true);
+                blocksToVisitInBFS.push(visitedBlock->exit_true);
               }
-              if (currentVisitedBB->exit_false != nullptr)
+              if (visitedBlock->exit_false != nullptr)
               {
-                visitOrder.push(currentVisitedBB->exit_false);
+                blocksToVisitInBFS.push(visitedBlock->exit_false);
               }
             }
           }
         }
 
         // Met à jour les variables vivantes après l'instruction
-        for (auto &nextInstruction : nextInstrs)
+        for (auto &nextInstruction : nextInstructions)
         {
-          for (auto var : liveInfo.liveVariablesBeforeInstruction[nextInstruction])
+          for (auto liveVar : livenessAnalysis.liveVariablesBeforeInstruction[nextInstruction])
           {
-            liveInfo.liveVariablesAfterInstruction[&instr].insert(var);
+            livenessAnalysis.liveVariablesAfterInstruction[&instruction].insert(liveVar);
           }
         }
 
         // Vérifie si l'analyse est stable
-        if (stable && (liveInfo.liveVariablesBeforeInstruction[&instr] != oldIn ||
-                       liveInfo.liveVariablesAfterInstruction[&instr] != oldOut))
+        if (isStable && (livenessAnalysis.liveVariablesBeforeInstruction[&instruction] != previousInSet ||
+                         livenessAnalysis.liveVariablesAfterInstruction[&instruction] != previousOutSet))
         {
-          stable = false;
+          isStable = false;
         }
 
         instructionIndex++;
       }
 
       // Ajoute les blocs de sortie à visiter
-      if (currentBB->exit_true != nullptr &&
-          visitedBB.find(currentBB->exit_true) == visitedBB.end())
+      if (currentBlock->exit_true != nullptr &&
+          visitedBlocks.find(currentBlock->exit_true) == visitedBlocks.end())
       {
-        visitOrder.push(currentBB->exit_true);
+        blocksToVisit.push(currentBlock->exit_true);
       }
-      if (currentBB->exit_false != nullptr &&
-          visitedBB.find(currentBB->exit_false) == visitedBB.end())
+      if (currentBlock->exit_false != nullptr &&
+          visitedBlocks.find(currentBlock->exit_false) == visitedBlocks.end())
       {
-        visitOrder.push(currentBB->exit_false);
+        blocksToVisit.push(currentBlock->exit_false);
       }
     }
   }
 
-  return liveInfo;
+  return livenessAnalysis;
 }
 
 /**
@@ -1475,102 +1475,99 @@ InstructionLivenessAnalysis CFG::computeLiveInfo()
  * @param usedNodes Ensemble des nœuds déjà utilisés.
  * @return Le nombre de voisins non encore utilisés.
  */
-int computeNeighbors(vector<shared_ptr<Symbol>> &neighbors,
-                     set<shared_ptr<Symbol>> &usedNodes)
+int countUnusedNeighbors(vector<shared_ptr<Symbol>> &neighborSymbols,
+             set<shared_ptr<Symbol>> &allocatedNodes)
 {
-  int neighborCount = 0;
-  for (auto x : neighbors)
+  int unusedNeighborCount = 0;
+  for (auto neighbor : neighborSymbols)
   {
-    if (find(usedNodes.begin(), usedNodes.end(), x) == usedNodes.end())
-    {
-      neighborCount++;
-    }
+  if (allocatedNodes.find(neighbor) == allocatedNodes.end())
+  {
+    unusedNeighborCount++;
   }
-  return neighborCount;
+  }
+  return unusedNeighborCount;
 }
 
 /**
- * Trouve l'ordre d'allocation des registres et les variables à décharger
+ * Détermine l'ordre d'allocation des registres et les variables à décharger
  * @param interferenceGraph Le graphe d'interférence
- * @param registerCount Le nombre de registres disponibles
+ * @param availableRegisterCount Le nombre de registres disponibles
  * @return Les informations sur les variables à décharger et l'ordre d'allocation
  */
-RegisterAllocationSpillData CFG::findColorOrder(
+RegisterAllocationSpillData CFG::determineRegisterAllocationOrder(
   map<shared_ptr<Symbol>, vector<shared_ptr<Symbol>>>
-    &interferenceGraph,
-  int registerCount)
+  &interferenceGraph,
+  int availableRegisterCount)
 {
-  int n = interferenceGraph.size();
-  RegisterAllocationSpillData spillInfo;
-  set<shared_ptr<Symbol>> usedNodes;
-  int unselectedNodes = 0;
-  while (unselectedNodes < n)
+  int totalNodes = interferenceGraph.size();
+  RegisterAllocationSpillData spillData;
+  set<shared_ptr<Symbol>> allocatedNodes;
+  int processedNodes = 0;
+
+  while (processedNodes < totalNodes)
   {
-  bool foundNode = false;
-  for (auto node = interferenceGraph.begin(); node != interferenceGraph.end();
-     node++)
+  bool nodeAllocated = false;
+  for (auto node = interferenceGraph.begin(); node != interferenceGraph.end(); node++)
   {
-    if (usedNodes.find(node->first) == usedNodes.end() &&
-      computeNeighbors(node->second, usedNodes) < registerCount)
+    if (allocatedNodes.find(node->first) == allocatedNodes.end() &&
+      countUnusedNeighbors(node->second, allocatedNodes) < availableRegisterCount)
     {
-    spillInfo.registerAssignmentOrder.push(node->first);
-    usedNodes.insert(node->first);
-    foundNode = true;
+    spillData.registerAllocationOrder.push(node->first);
+    allocatedNodes.insert(node->first);
+    nodeAllocated = true;
     break;
     }
   }
-  if (!foundNode)
+  if (!nodeAllocated)
   {
-    // Just spill the first variable
-    for (auto node = interferenceGraph.begin();
-       node != interferenceGraph.end(); node++)
+    // Décharge la première variable non allouée
+    for (auto node = interferenceGraph.begin(); node != interferenceGraph.end(); node++)
     {
-    if (find(usedNodes.begin(), usedNodes.end(), node->first) ==
-      usedNodes.end())
+    if (allocatedNodes.find(node->first) == allocatedNodes.end())
     {
-      usedNodes.insert(node->first);
-      spillInfo.variablesThatWereSpilled.insert(node->first);
+      allocatedNodes.insert(node->first);
+      spillData.spilledVariables.insert(node->first);
       break;
     }
     }
   }
-  unselectedNodes++;
+  processedNodes++;
   }
-  return spillInfo;
+  return spillData;
 }
 
-
-map<shared_ptr<Symbol>, int> CFG::assignRegisters(
-  RegisterAllocationSpillData &spillInfo,
+map<shared_ptr<Symbol>, int> CFG::allocateRegisters(
+  RegisterAllocationSpillData &spillData,
   map<shared_ptr<Symbol>, vector<shared_ptr<Symbol>>>
-    &interferenceGraph,
-  int registerCount)
+  &interferenceGraph,
+  int availableRegisterCount)
 {
-  int n = interferenceGraph.size();
-  map<shared_ptr<Symbol>, int> color;
-  while (!spillInfo.registerAssignmentOrder.empty())
+  map<shared_ptr<Symbol>, int> registerAssignments;
+  while (!spillData.registerAllocationOrder.empty())
   {
-  auto currentNode = spillInfo.registerAssignmentOrder.top();
-  spillInfo.registerAssignmentOrder.pop();
-  for (int curColor = 0; curColor < registerCount; curColor++)
+  auto currentSymbol = spillData.registerAllocationOrder.top();
+  spillData.registerAllocationOrder.pop();
+  for (int registerIndex = 0; registerIndex < availableRegisterCount; registerIndex++)
   {
-    bool colorAvailable = true;
-    for (auto x : interferenceGraph[currentNode])
+    bool isRegisterAvailable = true;
+    for (auto neighborSymbol : interferenceGraph[currentSymbol])
     {
-    if (color.find(x) != color.end() && color[x] == curColor)
+    if (registerAssignments.find(neighborSymbol) != registerAssignments.end() &&
+      registerAssignments[neighborSymbol] == registerIndex)
     {
-      colorAvailable = false;
+      isRegisterAvailable = false;
       break;
     }
     }
-    if (colorAvailable)
+    if (isRegisterAvailable)
     {
-    color[currentNode] = curColor;
+    registerAssignments[currentSymbol] = registerIndex;
     break;
     }
   }
   }
-  return color;
+  return registerAssignments;
 }
 
 /**
