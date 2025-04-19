@@ -2,48 +2,47 @@
 
 using namespace std;
 
+// Visite un nœud d'assignation dans l'AST
 antlrcpp::Any
 SymbolTableVisitor::visitAssignment(ifccParser::AssignmentContext *ctx) {
+  // Récupère le nom de la variable assignée
   string varName = ctx->ID()->getText();
 
-  // Check if variable is already declared
+  // Vérifie si la variable a déjà été déclarée
   if (symbolTable.find(varName) != symbolTable.end()) {
     cerr << "Error: Variable '" << varName
               << "' is declared multiple times.\n";
-    exit(1);
+    exit(1); // Arrête le programme en cas d'erreur
   }
 
-  // Assign an offset for the new variable
+  // Assigne un offset pour la nouvelle variable
   symbolTable[varName] = currentOffset;
-  currentOffset -= 4; // Move stack pointer down for the next variable
-
-  // cout << "[DEBUG] Assigned '" << varName << "' to offset "
-  //           << symbolTable[varName] << "\n";
-
-  // Visit the right-hand side of the assignment
-  visit(ctx->expr());
+  currentOffset -= 4; // Réduit l'offset pour la prochaine variable
+  visit(ctx->expr()); // Visite l'expression associée à l'assignation
 
   return 0;
 }
 
+// Visite un nœud opérande dans l'AST
 antlrcpp::Any
 SymbolTableVisitor::visitOperand(ifccParser::OperandContext *ctx) {
-  if (ctx->ID()) {
+  if (ctx->ID()) { // Si l'opérande est une variable
     string varName = ctx->ID()->getText();
 
-    // Check if variable was declared before being used
+    // Vérifie si la variable a été déclarée avant utilisation
     if (symbolTable.find(varName) == symbolTable.end()) {
       cerr << "Error: Variable '" << varName
                 << "' is used before being declared.\n";
-      exit(1);
+      exit(1); // Arrête le programme en cas d'erreur
     }
 
-    // Mark the variable as used
+    // Marque la variable comme utilisée
     usedVariables.insert(varName);
   }
   return 0;
 }
 
+// Vérifie les variables déclarées mais jamais utilisées
 void SymbolTableVisitor::checkUnusedVariables() {
   for (const auto &entry : symbolTable) {
     if (usedVariables.find(entry.first) == usedVariables.end()) {
@@ -53,14 +52,18 @@ void SymbolTableVisitor::checkUnusedVariables() {
   }
 }
 
+// Visite un nœud d'appel de fonction dans l'AST
 antlrcpp::Any SymbolTableVisitor::visitFuncCall(ifccParser::FuncCallContext *ctx) {
+    // Récupère le nom de la fonction appelée
     string functionName = ctx->ID()->getText();
 
+    // Vérifie si la fonction est définie (seules "putchar" et "getchar" sont autorisées)
     if (functionName != "putchar" && functionName != "getchar") {
         cerr << "Error: Undefined function '" << functionName << "'.\n";
-        exit(1);
+        exit(1); // Arrête le programme en cas d'erreur
     }
 
+    // Visite les expressions passées en arguments à la fonction
     for (auto expr : ctx->expr()) {
         visit(expr);
     }
@@ -68,10 +71,13 @@ antlrcpp::Any SymbolTableVisitor::visitFuncCall(ifccParser::FuncCallContext *ctx
     return 0;
 }
 
+// Visite un nœud de déclaration de variable dans l'AST
 antlrcpp::Any SymbolTableVisitor::visitVar_decl_stmt(ifccParser::Var_decl_stmtContext *ctx) {
   for (auto member : ctx->var_decl_member()) {
+    // Récupère le nom de la variable déclarée
     string varName = member->ID()->getText();
-    // ... (code existant)
+
+    // Vérifie si la variable est initialisée
     if (!member->expr()) {
       cerr << "Warning: Variable '" << varName << "' is not initialized.\n";
     }

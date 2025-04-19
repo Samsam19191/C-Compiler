@@ -11,9 +11,9 @@ using namespace std;
 class SymbolTableVisitor : public ifccBaseVisitor {
 private:
   unordered_map<string, int>
-      symbolTable;                     // Variable name -> stack offset
-  set<string> usedVariables; // Variables that were accessed
-  int currentOffset = -4; // Start at -4(%rbp), move down for each variable
+      symbolTable;  // Maps variable names to their offsets in the stack frame
+  set<string> usedVariables; 
+  int currentOffset = -4;  // Offset for the next variable to be added to the symbol table
 
 public:
   antlrcpp::Any visitAssignment(ifccParser::AssignmentContext *ctx) override;

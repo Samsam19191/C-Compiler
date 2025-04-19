@@ -18,11 +18,11 @@ ostream &operator<<(ostream &os, const Parameter &parameter)
 {
   if (auto symbol = get_if<shared_ptr<Symbol>>(&parameter))
   {
-    os << (*symbol)->lexeme;
+    os << (*symbol)->lexeme; // Affiche le lexème du symbole
   }
   else if (auto n = get_if<string>(&parameter))
   {
-    os << *n;
+    os << *n; // Affiche directement la valeur si c'est une string
   }
 
   return os;
@@ -39,7 +39,7 @@ IRInstr::IRInstr(BasicBlock *bb_, Operation op, Type t,
                  const vector<Parameter> &parameters)
     : block(bb_), op(op), outType(t), parameters(parameters) {}
 
-    /**
+/**
  * Génère le code assembleur x86-64 correspondant à l'instruction IR
  * @param os Le flux de sortie pour écrire le code assembleur
  * @param cfg Le graphe de flux de contrôle associé
@@ -49,86 +49,87 @@ void IRInstr::genAsm(ostream &os, CFG *cfg)
   switch (op)
   {
   case add:
-    generateBinaryOperation("addl", os, cfg);
+    generateBinaryOperation("addl", os, cfg); // Génère une addition
     break;
   case sub:
-    generateBinaryOperation("subl", os, cfg);
+    generateBinaryOperation("subl", os, cfg); // Génère une soustraction
     break;
   case mul:
-    generateBinaryOperation("imull", os, cfg);
+    generateBinaryOperation("imull", os, cfg); // Génère une multiplication
     break;
   case cmpNZ:
-    generateCompareNotZero(os, cfg);
+    generateCompareNotZero(os, cfg); // Génère une comparaison avec zéro
     break;
   case div:
-    generateDivisionInstruction(os, cfg);
+    generateDivisionInstruction(os, cfg); // Génère une division entière
     break;
   case mod:
-    generateModuloInstruction(os, cfg);
+    generateModuloInstruction(os, cfg); // Génère un modulo
     break;
   case b_and:
-    generateBinaryOperation("andl", os, cfg);
+    generateBinaryOperation("andl", os, cfg); // Génère un AND binaire
     break;
   case b_or:
-    generateBinaryOperation("orl", os, cfg);
+    generateBinaryOperation("orl", os, cfg); // Génère un OR binaire
     break;
   case b_xor:
-    generateBinaryOperation("xorl", os, cfg);
+    generateBinaryOperation("xorl", os, cfg); // Génère un XOR binaire
     break;
   case lt:
-    generateComparisonOperation("setl", os, cfg);
+    generateComparisonOperation("setl", os, cfg); // Génère une comparaison <
     break;
   case leq:
-    generateComparisonOperation("setle", os, cfg);
+    generateComparisonOperation("setle", os, cfg); // Génère une comparaison <=
     break;
   case gt:
-    generateComparisonOperation("setg", os, cfg);
+    generateComparisonOperation("setg", os, cfg); // Génère une comparaison >
     break;
   case geq:
-    generateComparisonOperation("setge", os, cfg);
+    generateComparisonOperation("setge", os, cfg); // Génère une comparaison >=
     break;
   case eq:
-    generateComparisonOperation("sete", os, cfg);
+    generateComparisonOperation("sete", os, cfg); // Génère une comparaison ==
     break;
   case neq:
-    generateComparisonOperation("setne", os, cfg);
+    generateComparisonOperation("setne", os, cfg); // Génère une comparaison !=
     break;
   case ret:
-    generateReturnInstruction(os, cfg);
+    generateReturnInstruction(os, cfg); // Génère une instruction de retour
     break;
   case var_assign:
-    generateVariableAssignment(os, cfg);
+    generateVariableAssignment(os, cfg); // Génère une affectation de variable
     break;
   case ldconst:
-    generateLoadConstant(os, cfg);
+    generateLoadConstant(os, cfg); // Charge une constante
     break;
   case ldvar:
-    generateLoadVariable(os, cfg);
+    generateLoadVariable(os, cfg); // Charge une variable
+    break;
   case neg:
-    generateUnaryOperation("neg", os, cfg);
+    generateUnaryOperation("neg", os, cfg); // Génère une négation
     break;
   case not_:
-    generateUnaryOperation("notl", os, cfg);
+    generateUnaryOperation("notl", os, cfg); // Génère un NOT binaire
     break;
   case lnot:
-    generateUnaryOperation("lnot", os, cfg);
+    generateUnaryOperation("lnot", os, cfg); // Génère un NOT logique
     break;
   case inc:
-    generateUnaryOperation("inc", os, cfg);
+    generateUnaryOperation("inc", os, cfg); // Génère une incrémentation
     break;
   case dec:
-    generateUnaryOperation("dec", os, cfg);
+    generateUnaryOperation("dec", os, cfg); // Génère une décrémentation
     break;
   case nothing:
-    break;
+    break; // Pas d'opération
   case call:
-    generateFunctionCall(os, cfg);
+    generateFunctionCall(os, cfg); // Génère un appel de fonction
     break;
   case param:
-    generateFunctionParameterPassing(os, cfg);
+    generateFunctionParameterPassing(os, cfg); // Prépare un paramètre pour un appel
     break;
   case param_decl:
-    break;
+    break; // Déclaration de paramètre (pas d'implémentation ici)
   }
 }
 
@@ -155,14 +156,14 @@ set<shared_ptr<Symbol>> IRInstr::getUsedVariables()
   case IRInstr::geq:
   case IRInstr::eq:
   case IRInstr::neq:
-    result.insert(get<shared_ptr<Symbol>>(parameters[0]));
-    result.insert(get<shared_ptr<Symbol>>(parameters[1]));
+    result.insert(get<shared_ptr<Symbol>>(parameters[0])); // Ajoute le premier opérande
+    result.insert(get<shared_ptr<Symbol>>(parameters[1])); // Ajoute le second opérande
     break;
   case IRInstr::ldconst:
-    break;
+    break; // Pas de variables utilisées
   case IRInstr::var_assign:
   case IRInstr::lnot:
-    result.insert(get<shared_ptr<Symbol>>(parameters[1]));
+    result.insert(get<shared_ptr<Symbol>>(parameters[1])); // Ajoute la source
     break;
   case IRInstr::cmpNZ:
   case IRInstr::neg:
@@ -170,28 +171,28 @@ set<shared_ptr<Symbol>> IRInstr::getUsedVariables()
   case IRInstr::inc:
   case IRInstr::dec:
   case IRInstr::param:
-    result.insert(get<shared_ptr<Symbol>>(parameters[0]));
+    result.insert(get<shared_ptr<Symbol>>(parameters[0])); // Ajoute la variable
     break;
   case ret:
     if (outType != Type::VOID)
     {
-      result.insert(get<shared_ptr<Symbol>>(parameters[0]));
+      result.insert(get<shared_ptr<Symbol>>(parameters[0])); // Ajoute la valeur de retour
     }
     break;
   case IRInstr::nothing:
   case IRInstr::ldvar:
   case IRInstr::param_decl:
-    break;
+    break; // Pas de variables utilisées
   case IRInstr::call:
   {
     int cnt = parameters.size();
     if (outType != Type::VOID)
     {
-      cnt--;
+      cnt--; // Ignore le dernier paramètre si c'est une valeur de retour
     }
     for (int i = 1; i < cnt; i++)
     {
-      result.insert(get<shared_ptr<Symbol>>(parameters[i]));
+      result.insert(get<shared_ptr<Symbol>>(parameters[i])); // Ajoute les paramètres
     }
     break;
   }
@@ -222,11 +223,11 @@ set<shared_ptr<Symbol>> IRInstr::getDeclaredVariable()
   case IRInstr::geq:
   case IRInstr::eq:
   case IRInstr::neq:
-    result.insert(get<shared_ptr<Symbol>>(parameters[2]));
+    result.insert(get<shared_ptr<Symbol>>(parameters[2])); // Ajoute la destination
     break;
   case IRInstr::ldconst:
   case IRInstr::lnot:
-    result.insert(get<shared_ptr<Symbol>>(parameters[1]));
+    result.insert(get<shared_ptr<Symbol>>(parameters[1])); // Ajoute la destination
     break;
   case IRInstr::var_assign:
   case IRInstr::neg:
@@ -234,13 +235,13 @@ set<shared_ptr<Symbol>> IRInstr::getDeclaredVariable()
   case IRInstr::inc:
   case IRInstr::dec:
   case IRInstr::param_decl:
-    result.insert(get<shared_ptr<Symbol>>(parameters[0]));
+    result.insert(get<shared_ptr<Symbol>>(parameters[0])); // Ajoute la variable
     break;
   case IRInstr::call:
     if (outType != Type::VOID)
     {
       result.insert(
-          get<shared_ptr<Symbol>>(parameters[parameters.size() - 1]));
+          get<shared_ptr<Symbol>>(parameters[parameters.size() - 1])); // Ajoute la valeur de retour
     }
     break;
   case IRInstr::ret:
@@ -248,7 +249,7 @@ set<shared_ptr<Symbol>> IRInstr::getDeclaredVariable()
   case IRInstr::ldvar:
   case IRInstr::nothing:
   case IRInstr::param:
-    break;
+    break; // Pas de variables déclarées
   }
   return result;
 }
@@ -374,15 +375,18 @@ ostream &operator<<(ostream &os, IRInstr &instruction)
  */
 void IRInstr::generateCompareNotZero(ostream &os, CFG *cfg)
 {
-
+  // Récupère le registre associé au premier paramètre
   int firstRegister =
       cfg->getRegisterIndexForSymbol(get<shared_ptr<Symbol>>(parameters[0]));
+
+  // Si le registre est un registre temporaire, charge la valeur depuis la pile
   if (firstRegister == cfg->scratchRegister)
   {
     os << "movl -" << get<shared_ptr<Symbol>>(parameters[0])->offset
        << "(%rbp), " << registers32[firstRegister] << endl;
   }
 
+  // Effectue une opération de test sur le registre
   os << "testl %" << registers32[firstRegister] << ", %"
      << registers32[firstRegister] << endl;
 }
@@ -393,26 +397,39 @@ void IRInstr::generateCompareNotZero(ostream &os, CFG *cfg)
  */
 void IRInstr::generateDivisionInstruction(ostream &os, CFG *cfg)
 {
+  // Récupère les registres associés aux paramètres
   int firstRegister =
       cfg->getRegisterIndexForSymbol(get<shared_ptr<Symbol>>(parameters[0]));
   int secondRegister =
       cfg->getRegisterIndexForSymbol(get<shared_ptr<Symbol>>(parameters[1]));
   int destRegister =
       cfg->getRegisterIndexForSymbol(get<shared_ptr<Symbol>>(parameters[2]));
+
+  // Charge le premier opérande dans eax
   if (firstRegister == cfg->scratchRegister)
   {
     os << "movl -" << get<shared_ptr<Symbol>>(parameters[0])->offset
        << "(%rbp), %" << registers32[firstRegister] << endl;
   }
   os << "movl %" << registers32[firstRegister] << ", %eax" << endl;
+
+  // Initialise edx à 0 pour la division
   os << "movl $0, %edx" << endl;
+
+  // Charge le second opérande si nécessaire
   if (secondRegister == cfg->scratchRegister)
   {
     os << "movl -" << get<shared_ptr<Symbol>>(parameters[1])->offset
        << "(%rbp), " << registers32[secondRegister] << endl;
   }
+
+  // Effectue la division entière
   os << "idivl %" << registers32[secondRegister] << endl;
+
+  // Stocke le résultat dans le registre de destination
   os << "movl %eax, %" << registers32[destRegister] << endl;
+
+  // Si le registre de destination est temporaire, sauvegarde le résultat dans la pile
   if (destRegister == cfg->scratchRegister)
   {
     os << "movl %" << registers32[destRegister] << ", -"
@@ -427,27 +444,39 @@ void IRInstr::generateDivisionInstruction(ostream &os, CFG *cfg)
  */
 void IRInstr::generateModuloInstruction(ostream &os, CFG *cfg)
 {
+  // Récupère les registres associés aux paramètres
   int firstRegister =
       cfg->getRegisterIndexForSymbol(get<shared_ptr<Symbol>>(parameters[0]));
   int secondRegister =
       cfg->getRegisterIndexForSymbol(get<shared_ptr<Symbol>>(parameters[1]));
   int destRegister =
       cfg->getRegisterIndexForSymbol(get<shared_ptr<Symbol>>(parameters[2]));
+
+  // Charge le premier opérande dans eax
   if (firstRegister == cfg->scratchRegister)
   {
     os << "movl -" << get<shared_ptr<Symbol>>(parameters[0])->offset
        << "(%rbp), %" << registers32[firstRegister] << endl;
   }
   os << "movl %" << registers32[firstRegister] << ", %eax" << endl;
+
+  // Initialise edx à 0 pour la division
   os << "movl $0, %edx" << endl;
 
+  // Charge le second opérande si nécessaire
   if (secondRegister == cfg->scratchRegister)
   {
     os << "movl -" << get<shared_ptr<Symbol>>(parameters[1])->offset
        << "(%rbp), %" << registers32[secondRegister] << endl;
   }
+
+  // Effectue la division entière
   os << "idivl %" << registers32[secondRegister] << endl;
+
+  // Stocke le reste (modulo) dans le registre de destination
   os << "movl %edx, %" << registers32[destRegister] << endl;
+
+  // Si le registre de destination est temporaire, sauvegarde le résultat dans la pile
   if (destRegister == cfg->scratchRegister)
   {
     os << "movl %" << registers32[destRegister] << ",-"
@@ -462,6 +491,7 @@ void IRInstr::generateModuloInstruction(ostream &os, CFG *cfg)
  */
 void IRInstr::generateReturnInstruction(ostream &os, CFG *cfg)
 {
+  // Si la fonction retourne une valeur, charge-la dans eax
   if (outType != Type::VOID)
   {
     int firstRegister =
@@ -474,6 +504,8 @@ void IRInstr::generateReturnInstruction(ostream &os, CFG *cfg)
     }
     os << "movl %" << registers32[firstRegister] << ", %eax" << endl;
   }
+
+  // Restaure la base de pile et retourne
   os << "popq %rbp\n";
   os << "ret\n";
 }
@@ -484,26 +516,33 @@ void IRInstr::generateReturnInstruction(ostream &os, CFG *cfg)
  */
 void IRInstr::generateVariableAssignment(ostream &os, CFG *cfg)
 {
+  // Récupère les registres associés à la source et à la destination
   int destRegister =
       cfg->getRegisterIndexForSymbol(get<shared_ptr<Symbol>>(parameters[0]));
   int sourceRegister =
       cfg->getRegisterIndexForSymbol(get<shared_ptr<Symbol>>(parameters[1]));
   auto symbol = get<shared_ptr<Symbol>>(parameters[0]);
+
+  // Détermine l'instruction mov appropriée en fonction du type
   string instr = (symbol->type == Type::CHAR ? "movb " : "movl ");
   const string *registers =
       (symbol->type == Type::CHAR ? registers8 : registers32);
 
+  // Charge la source si elle est dans un registre temporaire
   if (sourceRegister == cfg->scratchRegister)
   {
     os << "movl -" << get<shared_ptr<Symbol>>(parameters[1])->offset
        << "(%rbp), %" << registers32[sourceRegister] << endl;
   }
 
+  // Effectue l'affectation entre registres
   if (sourceRegister != destRegister)
   {
     os << "movl %" << registers32[sourceRegister] << ", %"
        << registers32[destRegister] << "\n";
   }
+
+  // Si la destination est un registre temporaire, sauvegarde dans la pile
   if (destRegister == cfg->scratchRegister)
   {
     os << instr << " %" << registers32[destRegister] << ", -" << symbol->offset
@@ -517,14 +556,20 @@ void IRInstr::generateVariableAssignment(ostream &os, CFG *cfg)
  */
 void IRInstr::generateLoadConstant(ostream &os, CFG *cfg)
 {
+  // Récupère le symbole et la valeur de la constante
   auto symbol = get<shared_ptr<Symbol>>(parameters[1]);
   auto val = get<string>(parameters[0]);
   int destRegister = cfg->getRegisterIndexForSymbol(symbol);
+
+  // Détermine l'instruction mov appropriée en fonction du type
   string instr = (symbol->type == Type::CHAR ? "movb" : "movl");
   const string *registers =
       (symbol->type == Type::CHAR ? registers8 : registers32);
 
+  // Charge la constante dans le registre de destination
   os << "movl $" << val << ", %" << registers32[destRegister] << endl;
+
+  // Si le registre de destination est temporaire, sauvegarde dans la pile
   if (destRegister == cfg->scratchRegister)
   {
     os << "movl %" << registers32[destRegister] << ", -"
@@ -540,14 +585,17 @@ void IRInstr::generateLoadConstant(ostream &os, CFG *cfg)
  */
 void IRInstr::generateLoadVariable(ostream &os, CFG *cfg)
 {
-    auto symbol = get<shared_ptr<Symbol>>(parameters[0]);
-    int destRegister = cfg->getRegisterIndexForSymbol(symbol);
-    string instr = (symbol->type == Type::CHAR ? "movb" : "movl");
-    const string *registers = (symbol->type == Type::CHAR ? registers8 : registers32);
+  // Récupère le symbole et le registre de destination
+  auto symbol = get<shared_ptr<Symbol>>(parameters[0]);
+  int destRegister = cfg->getRegisterIndexForSymbol(symbol);
 
-    // Charge la variable depuis la pile vers le registre
-    os << instr << " -" << symbol->offset << "(%rbp), %" 
-       << registers[destRegister] << endl;
+  // Détermine l'instruction mov appropriée en fonction du type
+  string instr = (symbol->type == Type::CHAR ? "movb" : "movl");
+  const string *registers = (symbol->type == Type::CHAR ? registers8 : registers32);
+
+  // Charge la variable depuis la pile vers le registre
+  os << instr << " -" << symbol->offset << "(%rbp), %" 
+     << registers[destRegister] << endl;
 }
 
 /**
@@ -558,13 +606,15 @@ void IRInstr::generateLoadVariable(ostream &os, CFG *cfg)
 void IRInstr::generateBinaryOperation(const string &op, ostream &os,
                                       CFG *cfg)
 {
-
+  // Récupère les registres associés aux paramètres
   int firstRegister =
       cfg->getRegisterIndexForSymbol(get<shared_ptr<Symbol>>(parameters[0]));
   int secondRegister =
       cfg->getRegisterIndexForSymbol(get<shared_ptr<Symbol>>(parameters[1]));
   int destRegister =
       cfg->getRegisterIndexForSymbol(get<shared_ptr<Symbol>>(parameters[2]));
+
+  // Charge les opérandes si nécessaire et effectue l'opération
   if (firstRegister == cfg->scratchRegister)
   {
     os << "movl -" << get<shared_ptr<Symbol>>(parameters[0])->offset
@@ -635,12 +685,15 @@ void IRInstr::generateBinaryOperation(const string &op, ostream &os,
  */
 void IRInstr::generateComparisonOperation(const string &op, ostream &os, CFG *cfg)
 {
+  // Récupère les registres associés aux paramètres
   int firstRegister =
       cfg->getRegisterIndexForSymbol(get<shared_ptr<Symbol>>(parameters[0]));
   int secondRegister =
       cfg->getRegisterIndexForSymbol(get<shared_ptr<Symbol>>(parameters[1]));
   int destRegister =
       cfg->getRegisterIndexForSymbol(get<shared_ptr<Symbol>>(parameters[2]));
+
+  // Effectue la comparaison et stocke le résultat
   if (firstRegister == cfg->scratchRegister &&
       secondRegister == cfg->scratchRegister)
   {
@@ -671,6 +724,7 @@ void IRInstr::generateComparisonOperation(const string &op, ostream &os, CFG *cf
        << registers32[destRegister] << endl;
   }
 
+  // Si le registre de destination est temporaire, sauvegarde dans la pile
   if (destRegister == cfg->scratchRegister)
   {
     os << "movl %" << registers32[destRegister] << ", -"
@@ -687,9 +741,9 @@ int CFG::getRegisterIndexForSymbol(shared_ptr<Symbol> &param)
   auto paramLocation = registerAssignment.find(param);
   if (paramLocation != registerAssignment.end())
   {
-    return paramLocation->second;
+    return paramLocation->second; // Retourne l'index du registre alloué
   }
-  return scratchRegister;
+  return scratchRegister; // Retourne le registre scratch par défaut
 }
 
 /**
@@ -702,74 +756,76 @@ void IRInstr::generateUnaryOperation(const string &op, ostream &os, CFG *cfg)
   auto symbol = get<shared_ptr<Symbol>>(parameters[0]);
   int varRegister = cfg->getRegisterIndexForSymbol(symbol);
 
+  // Gestion des opérations d'incrémentation et de décrémentation
   if (op == "inc" || op == "dec")
   {
     if (varRegister == cfg->scratchRegister)
     {
       os << "movl -" << symbol->offset << "(%rbp), %"
-         << registers32[varRegister] << endl;
+         << registers32[varRegister] << endl; // Charge la variable depuis la pile
     }
-    os << op << " %" << registers32[varRegister] << "\n";
+    os << op << " %" << registers32[varRegister] << "\n"; // Effectue l'opération
     if (varRegister == cfg->scratchRegister)
     {
       os << "movl %" << registers32[varRegister] << ", -" << symbol->offset
-         << "(%rbp)" << endl;
+         << "(%rbp)" << endl; // Sauvegarde le résultat dans la pile
     }
   }
+  // Gestion des opérations de négation et NOT binaire
   if (op == "neg" || op == "notl")
   {
     if (varRegister == cfg->scratchRegister)
     {
       os << "movl -" << symbol->offset << "(%rbp), %"
-         << registers32[varRegister] << endl;
+         << registers32[varRegister] << endl; // Charge la variable depuis la pile
     }
     else
     {
       os << "movl %" << registers32[varRegister] << ", %"
-         << registers32[cfg->scratchRegister] << endl;
+         << registers32[cfg->scratchRegister] << endl; // Copie dans le registre scratch
     }
-    os << op << " %" << registers32[cfg->scratchRegister] << "\n";
+    os << op << " %" << registers32[cfg->scratchRegister] << "\n"; // Effectue l'opération
     auto destSymbol = get<shared_ptr<Symbol>>(parameters[1]);
     int destRegister = cfg->getRegisterIndexForSymbol(destSymbol);
     if (destRegister == cfg->scratchRegister)
     {
       os << "movl " << registers32[cfg->scratchRegister] << ", -"
-         << destSymbol->offset << "(%rbp)" << endl;
+         << destSymbol->offset << "(%rbp)" << endl; // Sauvegarde le résultat dans la pile
     }
     else
     {
       os << "movl %" << registers32[cfg->scratchRegister] << ", %"
-         << registers32[destRegister] << endl;
+         << registers32[destRegister] << endl; // Sauvegarde dans le registre de destination
     }
   }
+  // Gestion de l'opération NOT logique
   else if (op == "lnot")
   {
-    os << "cmpl $0, %" << registers32[varRegister] << endl;
+    os << "cmpl $0, %" << registers32[varRegister] << endl; // Compare avec 0
     int varRegister = cfg->getRegisterIndexForSymbol(symbol);
     if (varRegister == cfg->scratchRegister)
     {
       os << "movl %" << registers32[varRegister] << ", -" << symbol->offset
          << "(%rbp)"
-         << "\n";
+         << "\n"; // Sauvegarde dans la pile
     }
     auto destSymbol = get<shared_ptr<Symbol>>(parameters[1]);
     int destRegister = cfg->getRegisterIndexForSymbol(destSymbol);
     if (destRegister == cfg->scratchRegister)
     {
       os << "movl -" << symbol->offset << "(%rbp), %"
-         << registers32[destRegister] << endl;
+         << registers32[destRegister] << endl; // Charge dans le registre de destination
     }
-    os << "sete %" << registers8[destRegister] << endl;
+    os << "sete %" << registers8[destRegister] << endl; // Définit le résultat (0 ou 1)
     os << "movzbl %" << registers8[destRegister] << ", %"
-       << registers32[destRegister] << endl;
+       << registers32[destRegister] << endl; // Étend le résultat à 32 bits
     if (destRegister == cfg->scratchRegister)
     {
       os << "movl %" << registers32[destRegister] << ", -" << symbol->offset
-         << "(%rbp)" << endl;
+         << "(%rbp)" << endl; // Sauvegarde dans la pile
     }
   }
 }
-
 
 /**
  * Génère le code assembleur pour un appel de fonction
@@ -781,20 +837,23 @@ void IRInstr::generateUnaryOperation(const string &op, ostream &os, CFG *cfg)
  */
 void IRInstr::generateFunctionCall(ostream &os, CFG *cfg)
 {
-  string funcName = get<string>(parameters[0]);
+  string funcName = get<string>(parameters[0]); // Nom de la fonction appelée
   CFG *function = cfg->get_visitor()->getFunction(funcName);
-  int paramNum = function->get_parameters_type().size();
+  int paramNum = function->get_parameters_type().size(); // Nombre de paramètres
 
+  // Aligne la pile si nécessaire
   int val = (cfg->nextFreeSymbolIndex + 16 - 1) / 16 * 16;
   if (val)
   {
     os << "subq $" << val << ", %rsp" << endl;
   }
+  // Sauvegarde les registres utilisés
   for (int i = 0; i < 8; i++)
   {
     os << "pushq %" << registers64[i] << endl;
   }
 
+  // Gestion des échanges de registres pour les paramètres
   bool exchange = false;
   if (paramNum >= 6)
   {
@@ -806,6 +865,7 @@ void IRInstr::generateFunctionCall(ostream &os, CFG *cfg)
       exchange = true;
     }
   }
+  // Empile les paramètres
   for (int i = paramNum - 1; i >= 0; i--)
   {
     if ((i == 4 || i == 5) && exchange)
@@ -832,9 +892,10 @@ void IRInstr::generateFunctionCall(ostream &os, CFG *cfg)
 
   auto returnVar = get<shared_ptr<Symbol>>(*parameters.rbegin());
 
-  os << "call " << funcName << endl;
+  os << "call " << funcName << endl; // Appelle la fonction
   int paramRegister = cfg->getRegisterIndexForSymbol(returnVar);
 
+  // Restaure les registres sauvegardés
   for (int i = 0; i < 8; i++)
   {
     os << "popq %" << registers64[7 - i] << endl;
@@ -849,6 +910,7 @@ void IRInstr::generateFunctionCall(ostream &os, CFG *cfg)
     os << "addq $" << val << ", %rsp" << endl;
   }
 
+  // Récupère la valeur de retour si nécessaire
   if (outType != Type::VOID)
   {
     os << "movl %eax, %" << registers32[paramRegister] << endl;
@@ -869,7 +931,7 @@ void IRInstr::generateFunctionCall(ostream &os, CFG *cfg)
  */
 void IRInstr::generateFunctionParameterPassing(ostream &os, CFG *cfg)
 {
-  cfg->push_parameter(get<shared_ptr<Symbol>>(parameters[0]));
+  cfg->push_parameter(get<shared_ptr<Symbol>>(parameters[0])); // Ajoute le paramètre
 }
 
 /**
@@ -889,32 +951,32 @@ void BasicBlock::gen_asm(ostream &o)
 {
   if (visited)
   {
-    return;
+    return; // Évite les boucles infinies
   }
   visited = true;
   if (!label.empty())
   {
-    cout << label << ":\n";
+    cout << label << ":\n"; // Affiche le label du bloc
   }
   for (auto &instruction : instrs)
   {
-    instruction.genAsm(o, cfg);
+    instruction.genAsm(o, cfg); // Génère le code pour chaque instruction
   }
   if (exit_false != nullptr)
   {
-    o << "je " << exit_false->label << "\n";
+    o << "je " << exit_false->label << "\n"; // Saut conditionnel
   }
   if (exit_true != nullptr && !exit_true->label.empty())
   {
-    o << "jmp " << exit_true->label << "\n";
+    o << "jmp " << exit_true->label << "\n"; // Saut inconditionnel
   }
   if (exit_true != nullptr)
   {
-    exit_true->gen_asm(o);
+    exit_true->gen_asm(o); // Génère le code pour le bloc suivant
   }
   if (exit_false != nullptr)
   {
-    exit_false->gen_asm(o);
+    exit_false->gen_asm(o); // Génère le code pour le bloc suivant
   }
 }
 
@@ -950,24 +1012,24 @@ shared_ptr<Symbol> BasicBlock::add_IRInstr(IRInstr::Operation op, Type t,
   case IRInstr::ldconst:
   case IRInstr::lnot:
   {
-    shared_ptr<Symbol> symbol = cfg->create_new_tempvar(t);
-    parameters.push_back(symbol);
-    instrs.emplace_back(this, op, t, parameters);
-    return symbol;
+    shared_ptr<Symbol> symbol = cfg->create_new_tempvar(t); // Crée une variable temporaire
+    parameters.push_back(symbol); // Ajoute la variable temporaire aux paramètres
+    instrs.emplace_back(this, op, t, parameters); // Ajoute l'instruction au bloc
+    return symbol; // Retourne la variable temporaire
     break;
   }
   case IRInstr::call:
   {
     if (t != Type::VOID)
     {
-      shared_ptr<Symbol> symbol = cfg->create_new_tempvar(t);
-      parameters.push_back(symbol);
-      instrs.emplace_back(this, op, t, parameters);
-      return symbol;
+      shared_ptr<Symbol> symbol = cfg->create_new_tempvar(t); // Crée une variable temporaire
+      parameters.push_back(symbol); // Ajoute la variable temporaire aux paramètres
+      instrs.emplace_back(this, op, t, parameters); // Ajoute l'instruction au bloc
+      return symbol; // Retourne la variable temporaire
     }
     else
     {
-      instrs.emplace_back(this, op, t, parameters);
+      instrs.emplace_back(this, op, t, parameters); // Ajoute l'instruction au bloc
     }
     break;
   }
@@ -975,26 +1037,26 @@ shared_ptr<Symbol> BasicBlock::add_IRInstr(IRInstr::Operation op, Type t,
   case IRInstr::param:
   case IRInstr::var_assign:
   {
-    instrs.emplace_back(this, op, t, parameters);
+    instrs.emplace_back(this, op, t, parameters); // Ajoute l'instruction au bloc
     break;
   }
   case IRInstr::inc:
   case IRInstr::dec:
-    instrs.emplace_back(this, op, t, parameters);
-    return get<shared_ptr<Symbol>>(parameters[0]);
+    instrs.emplace_back(this, op, t, parameters); // Ajoute l'instruction au bloc
+    return get<shared_ptr<Symbol>>(parameters[0]); // Retourne la variable modifiée
     break;
 
   case IRInstr::param_decl:
-    instrs.emplace_back(this, op, t, parameters);
-    return get<shared_ptr<Symbol>>(parameters[0]);
+    instrs.emplace_back(this, op, t, parameters); // Ajoute l'instruction au bloc
+    return get<shared_ptr<Symbol>>(parameters[0]); // Retourne la variable déclarée
   case IRInstr::ldvar:
-    return get<shared_ptr<Symbol>>(parameters[0]);
+    return get<shared_ptr<Symbol>>(parameters[0]); // Retourne la variable chargée
     break;
   case IRInstr::nothing:
     break;
   }
 
-  return nullptr;
+  return nullptr; // Retourne nullptr si aucune variable n'est produite
 }
 
 
@@ -1006,23 +1068,25 @@ shared_ptr<Symbol> BasicBlock::add_IRInstr(IRInstr::Operation op, Type t,
  * @param visitor Le visiteur de génération de code associé
  */
 CFG::CFG(Type type, const string &name, int argCount,
-         CodeGenVisitor *visitor)
-    : nextFreeSymbolIndex(1 + 4 * max(0, argCount - 6)), name(name),
-      returnType(type), visitor(visitor)
+     CodeGenVisitor *visitor)
+  : nextFreeSymbolIndex(1 + 4 * max(0, argCount - 6)), name(name),
+    returnType(type), visitor(visitor)
 {
-  add_bb(new BasicBlock(this, ""));
-  push_table();
+  add_bb(new BasicBlock(this, "")); // Ajoute un bloc de base initial
+  push_table(); // Crée une nouvelle table de symboles pour la portée
 }
 
 CFG::~CFG()
 {
+  // Vide toutes les tables de symboles
   while (!symbolTables.empty())
   {
-    pop_table();
+  pop_table();
   }
+  // Libère la mémoire des blocs de base
   for (auto bb : bbs)
   {
-    delete bb;
+  delete bb;
   }
 }
 
@@ -1032,8 +1096,8 @@ CFG::~CFG()
  */
 void CFG::add_bb(BasicBlock *bb)
 {
-  bbs.push_back(bb);
-  current_bb = bb;
+  bbs.push_back(bb); // Ajoute le bloc à la liste des blocs
+  current_bb = bb; // Définit le bloc courant
 }
 
 /**
@@ -1043,15 +1107,15 @@ void CFG::add_bb(BasicBlock *bb)
  */
 string CFG::IR_reg_to_asm(string reg) 
 {
-    // Vérifie si c'est un registre 32 bits
-    if (reg.find("reg") != string::npos) {
-        int regNum = stoi(reg.substr(3));
-        if (regNum >= 0 && regNum < 8) {
-            return "%" + registers32[regNum];
-        }
+  // Vérifie si c'est un registre 32 bits
+  if (reg.find("reg") != string::npos) {
+    int regNum = stoi(reg.substr(3));
+    if (regNum >= 0 && regNum < 8) {
+      return "%" + registers32[regNum];
     }
-    // Si ce n'est pas un registre connu, retourne le nom tel quel
-    return reg;
+  }
+  // Si ce n'est pas un registre connu, retourne le nom tel quel
+  return reg;
 }
 
 /**
@@ -1060,62 +1124,64 @@ string CFG::IR_reg_to_asm(string reg)
 void CFG::gen_asm_prologue(ostream &o)
 {
 #ifdef __APPLE__
-  o << ".globl _" << name << "\n";
+  o << ".globl _" << name << "\n"; // Déclare la fonction comme globale (MacOS)
   o << "_" << name << " : \n";
 #else
-  o << ".globl " << name << "\n";
+  o << ".globl " << name << "\n"; // Déclare la fonction comme globale (Linux/Windows)
   o << name << " : \n";
 #endif
-  o << "pushq %rbp\n";
-  o << "movq %rsp, %rbp\n";
+  o << "pushq %rbp\n"; // Sauvegarde la base de pile
+  o << "movq %rsp, %rbp\n"; // Initialise la nouvelle base de pile
 
   bool isSwapped = false;
+  // Gestion des paramètres si plus de 6
   if (parameterTypes.size() >= 6)
   {
-    int parameterRegister1 = getRegisterIndexForSymbol(parameterTypes[4].symbol);
-    int parameterRegister2 = getRegisterIndexForSymbol(parameterTypes[4].symbol);
-    if (parameterRegister1 == 5 && parameterRegister2 == 4)
-    {
-      o << "xchg %r8d, %r9d" << endl;
-    }
+  int parameterRegister1 = getRegisterIndexForSymbol(parameterTypes[4].symbol);
+  int parameterRegister2 = getRegisterIndexForSymbol(parameterTypes[4].symbol);
+  if (parameterRegister1 == 5 && parameterRegister2 == 4)
+  {
+    o << "xchg %r8d, %r9d" << endl; // Échange les registres si nécessaire
+  }
   }
 
+  // Charge les paramètres dans les registres ou la pile
   for (int i = 4; !isSwapped && i < min((int)parameterTypes.size(), 6);
-       i++)
+     i++)
   {
-    auto parameter = parameterTypes[i];
-    int parameterRegister = getRegisterIndexForSymbol(parameter.symbol);
-    o << "movl %" << paramRegisters[i] << ", %"
-      << registers32[parameterRegister] << endl;
-    if (parameterRegister == scratchRegister)
-    {
-      o << "movl %" << registers32[parameterRegister] << ", -"
-        << parameter.symbol->offset << "(%rbp)" << endl;
-    }
+  auto parameter = parameterTypes[i];
+  int parameterRegister = getRegisterIndexForSymbol(parameter.symbol);
+  o << "movl %" << paramRegisters[i] << ", %"
+    << registers32[parameterRegister] << endl;
+  if (parameterRegister == scratchRegister)
+  {
+    o << "movl %" << registers32[parameterRegister] << ", -"
+    << parameter.symbol->offset << "(%rbp)" << endl;
+  }
   }
   for (int i = 0; i < parameterTypes.size(); i++)
   {
-    if (i == 4 || i == 5)
-    {
-      continue;
-    }
-    auto parameter = parameterTypes[i];
-    int parameterRegister = getRegisterIndexForSymbol(parameter.symbol);
-    if (i < 6)
-    {
-      o << "movl %" << paramRegisters[i] << ", %"
-        << registers32[parameterRegister] << endl;
-    }
-    else
-    {
-      o << "movl " << 8 * (i - 4) << "(%rbp)"
-        << ", %" << registers32[parameterRegister] << endl;
-    }
-    if (parameterRegister == scratchRegister)
-    {
-      o << "movl %" << registers32[parameterRegister] << ", -"
-        << parameter.symbol->offset << "(%rbp)" << endl;
-    }
+  if (i == 4 || i == 5)
+  {
+    continue;
+  }
+  auto parameter = parameterTypes[i];
+  int parameterRegister = getRegisterIndexForSymbol(parameter.symbol);
+  if (i < 6)
+  {
+    o << "movl %" << paramRegisters[i] << ", %"
+    << registers32[parameterRegister] << endl;
+  }
+  else
+  {
+    o << "movl " << 8 * (i - 4) << "(%rbp)"
+    << ", %" << registers32[parameterRegister] << endl;
+  }
+  if (parameterRegister == scratchRegister)
+  {
+    o << "movl %" << registers32[parameterRegister] << ", -"
+    << parameter.symbol->offset << "(%rbp)" << endl;
+  }
   }
 }
 
@@ -1125,10 +1191,10 @@ void CFG::gen_asm_prologue(ostream &o)
  */
 void CFG::gen_asm(ostream &o)
 {
-  computeRegisterAllocation();
-  gen_asm_prologue(o);
-  bbs[0]->gen_asm(o);
-  gen_asm_epilogue(o);
+  computeRegisterAllocation(); // Effectue l'allocation des registres
+  gen_asm_prologue(o); // Génère le prologue
+  bbs[0]->gen_asm(o); // Génère le code des blocs de base
+  gen_asm_epilogue(o); // Génère l'épilogue
 }
 
 /**
@@ -1137,17 +1203,17 @@ void CFG::gen_asm(ostream &o)
  */
 void CFG::gen_asm_epilogue(ostream &o)
 {
-    // Restaure la base de pile
-    o << "popq %rbp\n";
-    
-    // Retourne de la fonction
-    o << "ret\n";
-    
-    // Aligne la pile si nécessaire (pour les appels système)
-    if (nextFreeSymbolIndex > 0) {
-        int stackSize = ((nextFreeSymbolIndex + 15) / 16) * 16;
-        o << ".size " << name << ", .-" << name << "\n";
-    }
+  // Restaure la base de pile
+  o << "popq %rbp\n";
+  
+  // Retourne de la fonction
+  o << "ret\n";
+  
+  // Aligne la pile si nécessaire (pour les appels système)
+  if (nextFreeSymbolIndex > 0) {
+    int stackSize = ((nextFreeSymbolIndex + 15) / 16) * 16;
+    o << ".size " << name << ", .-" << name << "\n";
+  }
 }
 
 /**
@@ -1156,17 +1222,17 @@ void CFG::gen_asm_epilogue(ostream &o)
 void CFG::pop_table()
 {
   for (auto it = symbolTables.front().begin(); it != symbolTables.front().end();
-       it++)
+     it++)
   {
-    if (!it->second->used)
-    {
-      VisitorErrorListener::addError("Variable " + it->first +
-                                         " not used (declared in line " +
-                                         to_string(it->second->line) + ")",
-                                     ErrorType::Warning);
-    }
+  if (!it->second->used)
+  {
+    VisitorErrorListener::addError("Variable " + it->first +
+                     " not used (declared in line " +
+                     to_string(it->second->line) + ")",
+                   ErrorType::Warning);
   }
-  symbolTables.pop_front();
+  }
+  symbolTables.pop_front(); // Supprime la table de symboles courante
 }
 
 /**
@@ -1176,7 +1242,7 @@ bool CFG::add_symbol(string id, Type t, int line)
 {
   if (symbolTables.front().count(id))
   {
-    return false;
+  return false; // Retourne false si le symbole existe déjà
   }
   shared_ptr<Symbol> newSymbol = make_shared<Symbol>(t, id, line);
   unsigned int sz = getSize(t);
@@ -1193,14 +1259,14 @@ shared_ptr<Symbol> CFG::get_symbol(const string &name)
   auto it = symbolTables.begin();
   while (it != symbolTables.end())
   {
-    auto symbol = it->find(name);
-    if (symbol != it->end())
-    {
-      return symbol->second;
-    }
-    it++;
+  auto symbol = it->find(name);
+  if (symbol != it->end())
+  {
+    return symbol->second; // Retourne le symbole s'il est trouvé
   }
-  return nullptr;
+  it++;
+  }
+  return nullptr; // Retourne nullptr si le symbole n'est pas trouvé
 }
 
 shared_ptr<Symbol> CFG::create_new_tempvar(Type t)
@@ -1210,21 +1276,21 @@ shared_ptr<Symbol> CFG::create_new_tempvar(Type t)
   string tempVarName = "!T" + to_string(offset);
   if (add_symbol(tempVarName, t, 0))
   {
-    shared_ptr<Symbol> symbol = get_symbol(tempVarName);
-    symbol->used = true;
-    return symbol;
+  shared_ptr<Symbol> symbol = get_symbol(tempVarName);
+  symbol->used = true;
+  return symbol; // Retourne la variable temporaire créée
   }
   return nullptr;
 }
 
 shared_ptr<Symbol> CFG::add_parameter(const string &name, Type type,
-                                           int line)
+                       int line)
 {
   bool new_symbol = add_symbol(name, type, line);
   if (!new_symbol)
   {
-    VisitorErrorListener::addError(
-        "A parameter with name " + name + " has already been declared", line);
+  VisitorErrorListener::addError(
+    "A parameter with name " + name + " has already been declared", line);
   }
   auto symbol = get_symbol(name);
   parameterTypes.emplace_back(type, symbol);
@@ -1238,12 +1304,12 @@ shared_ptr<Symbol> CFG::add_parameter(const string &name, Type type,
  */
 int CFG::get_var_index(string name)
 {
-    shared_ptr<Symbol> symbol = get_symbol(name);
-    if (symbol != nullptr) {
-        return symbol->offset;
-    }
-    // Retourne -1 si la variable n'existe pas
-    return -1; 
+  shared_ptr<Symbol> symbol = get_symbol(name);
+  if (symbol != nullptr) {
+    return symbol->offset;
+  }
+  // Retourne -1 si la variable n'existe pas
+  return -1; 
 }
 
 /**
@@ -1253,37 +1319,52 @@ int CFG::get_var_index(string name)
  */
 Type CFG::get_var_type(string name)
 {
-    shared_ptr<Symbol> symbol = get_symbol(name);
-    if (symbol != nullptr) {
-        return symbol->type;
-    }
-    // Retourne VOID si la variable n'existe pas
-    return Type::VOID;
+  shared_ptr<Symbol> symbol = get_symbol(name);
+  if (symbol != nullptr) {
+    return symbol->type;
+  }
+  // Retourne VOID si la variable n'existe pas
+  return Type::VOID;
 }
+
 /**
  * Effectue l'analyse de vivacité des instructions
  * @return Les informations de vivacité pour chaque instruction
+ */
+/**
+ * Effectue l'analyse de vivacité des instructions dans le CFG.
+ * Cette analyse détermine les variables vivantes avant et après chaque instruction.
+ * @return Les informations de vivacité pour chaque instruction.
  */
 InstructionLivenessAnalysis CFG::computeLiveInfo()
 {
   InstructionLivenessAnalysis liveInfo;
   bool stable = false;
+
+  // Répète jusqu'à ce que l'analyse devienne stable (aucun changement dans les ensembles de vivacité)
   while (!stable)
   {
     stable = true;
-    set<BasicBlock *> visitedBB;
-    stack<BasicBlock *> visitOrder;
-    visitOrder.push(bbs[0]);
+    set<BasicBlock *> visitedBB; // Ensemble des blocs visités
+    stack<BasicBlock *> visitOrder; // Ordre de visite des blocs
+    visitOrder.push(bbs[0]); // Commence par le premier bloc de base
+
+    // Parcourt les blocs de base dans l'ordre de visite
     while (!visitOrder.empty())
     {
       BasicBlock *currentBB = visitOrder.top();
       visitOrder.pop();
       visitedBB.insert(currentBB);
+
       int instructionIndex = 0;
+
+      // Parcourt les instructions du bloc courant
       for (auto &instr : currentBB->instrs)
       {
-        set<shared_ptr<Symbol>> oldIn;
-        set<shared_ptr<Symbol>> oldOut;
+        set<shared_ptr<Symbol>> oldIn; // Variables vivantes avant l'instruction (ancienne version)
+        set<shared_ptr<Symbol>> oldOut; // Variables vivantes après l'instruction (ancienne version)
+
+        // Récupère les ensembles de vivacité actuels
         auto inPtr = liveInfo.liveVariablesBeforeInstruction.find(&instr);
         auto outPtr = liveInfo.liveVariablesAfterInstruction.find(&instr);
         if (inPtr != liveInfo.liveVariablesBeforeInstruction.end())
@@ -1294,25 +1375,31 @@ InstructionLivenessAnalysis CFG::computeLiveInfo()
         {
           oldOut = outPtr->second;
         }
+
+        // Calcule les nouvelles variables vivantes avant l'instruction
         set<shared_ptr<Symbol>> inUnion = oldOut;
         liveInfo.liveVariablesBeforeInstruction[&instr] = instr.getUsedVariables();
         for (auto &toRemove : instr.getDeclaredVariable())
         {
-          inUnion.erase(toRemove);
+          inUnion.erase(toRemove); // Supprime les variables déclarées
         }
         for (auto &toAdd : inUnion)
         {
           liveInfo.liveVariablesBeforeInstruction[&instr].insert(toAdd);
         }
+
+        // Calcule les nouvelles variables vivantes après l'instruction
         liveInfo.liveVariablesAfterInstruction[&instr].clear();
         vector<IRInstr *> nextInstrs;
+
+        // Ajoute la prochaine instruction du bloc si elle existe
         if (instructionIndex + 1 < currentBB->instrs.size())
         {
           nextInstrs.push_back(&currentBB->instrs[instructionIndex + 1]);
         }
         else
         {
-          // Perform a bfs on the next possible instruction
+          // Effectue une recherche BFS pour trouver les prochaines instructions possibles
           set<BasicBlock *> bfsBB;
           queue<BasicBlock *> visitOrder;
           if (currentBB->exit_true != nullptr)
@@ -1345,6 +1432,8 @@ InstructionLivenessAnalysis CFG::computeLiveInfo()
             }
           }
         }
+
+        // Met à jour les variables vivantes après l'instruction
         for (auto &nextInstruction : nextInstrs)
         {
           for (auto var : liveInfo.liveVariablesBeforeInstruction[nextInstruction])
@@ -1352,13 +1441,18 @@ InstructionLivenessAnalysis CFG::computeLiveInfo()
             liveInfo.liveVariablesAfterInstruction[&instr].insert(var);
           }
         }
+
+        // Vérifie si l'analyse est stable
         if (stable && (liveInfo.liveVariablesBeforeInstruction[&instr] != oldIn ||
                        liveInfo.liveVariablesAfterInstruction[&instr] != oldOut))
         {
           stable = false;
         }
+
         instructionIndex++;
       }
+
+      // Ajoute les blocs de sortie à visiter
       if (currentBB->exit_true != nullptr &&
           visitedBB.find(currentBB->exit_true) == visitedBB.end())
       {
@@ -1371,9 +1465,16 @@ InstructionLivenessAnalysis CFG::computeLiveInfo()
       }
     }
   }
+
   return liveInfo;
 }
 
+/**
+ * Calcule le nombre de voisins non encore utilisés dans le graphe d'interférence.
+ * @param neighbors Liste des voisins d'un nœud.
+ * @param usedNodes Ensemble des nœuds déjà utilisés.
+ * @return Le nombre de voisins non encore utilisés.
+ */
 int computeNeighbors(vector<shared_ptr<Symbol>> &neighbors,
                      set<shared_ptr<Symbol>> &usedNodes)
 {
@@ -1395,9 +1496,9 @@ int computeNeighbors(vector<shared_ptr<Symbol>> &neighbors,
  * @return Les informations sur les variables à décharger et l'ordre d'allocation
  */
 RegisterAllocationSpillData CFG::findColorOrder(
-    map<shared_ptr<Symbol>, vector<shared_ptr<Symbol>>>
-        &interferenceGraph,
-    int registerCount)
+  map<shared_ptr<Symbol>, vector<shared_ptr<Symbol>>>
+    &interferenceGraph,
+  int registerCount)
 {
   int n = interferenceGraph.size();
   RegisterAllocationSpillData spillInfo;
@@ -1405,69 +1506,69 @@ RegisterAllocationSpillData CFG::findColorOrder(
   int unselectedNodes = 0;
   while (unselectedNodes < n)
   {
-    bool foundNode = false;
-    for (auto node = interferenceGraph.begin(); node != interferenceGraph.end();
-         node++)
+  bool foundNode = false;
+  for (auto node = interferenceGraph.begin(); node != interferenceGraph.end();
+     node++)
+  {
+    if (usedNodes.find(node->first) == usedNodes.end() &&
+      computeNeighbors(node->second, usedNodes) < registerCount)
     {
-      if (usedNodes.find(node->first) == usedNodes.end() &&
-          computeNeighbors(node->second, usedNodes) < registerCount)
-      {
-        spillInfo.registerAssignmentOrder.push(node->first);
-        usedNodes.insert(node->first);
-        foundNode = true;
-        break;
-      }
+    spillInfo.registerAssignmentOrder.push(node->first);
+    usedNodes.insert(node->first);
+    foundNode = true;
+    break;
     }
-    if (!foundNode)
+  }
+  if (!foundNode)
+  {
+    // Just spill the first variable
+    for (auto node = interferenceGraph.begin();
+       node != interferenceGraph.end(); node++)
     {
-      // Just spill the first variable
-      for (auto node = interferenceGraph.begin();
-           node != interferenceGraph.end(); node++)
-      {
-        if (find(usedNodes.begin(), usedNodes.end(), node->first) ==
-            usedNodes.end())
-        {
-          usedNodes.insert(node->first);
-          spillInfo.variablesThatWereSpilled.insert(node->first);
-          break;
-        }
-      }
+    if (find(usedNodes.begin(), usedNodes.end(), node->first) ==
+      usedNodes.end())
+    {
+      usedNodes.insert(node->first);
+      spillInfo.variablesThatWereSpilled.insert(node->first);
+      break;
     }
-    unselectedNodes++;
+    }
+  }
+  unselectedNodes++;
   }
   return spillInfo;
 }
 
 
 map<shared_ptr<Symbol>, int> CFG::assignRegisters(
-    RegisterAllocationSpillData &spillInfo,
-    map<shared_ptr<Symbol>, vector<shared_ptr<Symbol>>>
-        &interferenceGraph,
-    int registerCount)
+  RegisterAllocationSpillData &spillInfo,
+  map<shared_ptr<Symbol>, vector<shared_ptr<Symbol>>>
+    &interferenceGraph,
+  int registerCount)
 {
   int n = interferenceGraph.size();
   map<shared_ptr<Symbol>, int> color;
   while (!spillInfo.registerAssignmentOrder.empty())
   {
-    auto currentNode = spillInfo.registerAssignmentOrder.top();
-    spillInfo.registerAssignmentOrder.pop();
-    for (int curColor = 0; curColor < registerCount; curColor++)
+  auto currentNode = spillInfo.registerAssignmentOrder.top();
+  spillInfo.registerAssignmentOrder.pop();
+  for (int curColor = 0; curColor < registerCount; curColor++)
+  {
+    bool colorAvailable = true;
+    for (auto x : interferenceGraph[currentNode])
     {
-      bool colorAvailable = true;
-      for (auto x : interferenceGraph[currentNode])
-      {
-        if (color.find(x) != color.end() && color[x] == curColor)
-        {
-          colorAvailable = false;
-          break;
-        }
-      }
-      if (colorAvailable)
-      {
-        color[currentNode] = curColor;
-        break;
-      }
+    if (color.find(x) != color.end() && color[x] == curColor)
+    {
+      colorAvailable = false;
+      break;
     }
+    }
+    if (colorAvailable)
+    {
+    color[currentNode] = curColor;
+    break;
+    }
+  }
   }
   return color;
 }
@@ -1481,30 +1582,30 @@ map<shared_ptr<Symbol>, vector<shared_ptr<Symbol>>>
 CFG::buildInterferenceGraph(InstructionLivenessAnalysis &liveInfo)
 {
   map<shared_ptr<Symbol>, vector<shared_ptr<Symbol>>>
-      interferenceGraph;
+    interferenceGraph;
   for (auto inPtr : liveInfo.liveVariablesBeforeInstruction)
   {
-    auto declaredVar = inPtr.first->getDeclaredVariable();
-    if (!declaredVar.empty())
+  auto declaredVar = inPtr.first->getDeclaredVariable();
+  if (!declaredVar.empty())
+  {
+    auto definedVariable = *declaredVar.begin();
+    if (interferenceGraph.find(definedVariable) == interferenceGraph.end())
     {
-      auto definedVariable = *declaredVar.begin();
-      if (interferenceGraph.find(definedVariable) == interferenceGraph.end())
-      {
-        interferenceGraph[definedVariable] =
-            vector<shared_ptr<Symbol>>();
-      }
-      for (auto &outVar : liveInfo.liveVariablesAfterInstruction[inPtr.first])
-      {
-        if (outVar != definedVariable &&
-            find(interferenceGraph[definedVariable].begin(),
-                      interferenceGraph[definedVariable].end(),
-                      outVar) == interferenceGraph[definedVariable].end())
-        {
-          interferenceGraph[definedVariable].push_back(outVar);
-          interferenceGraph[outVar].push_back(definedVariable);
-        }
-      }
+    interferenceGraph[definedVariable] =
+      vector<shared_ptr<Symbol>>();
     }
+    for (auto &outVar : liveInfo.liveVariablesAfterInstruction[inPtr.first])
+    {
+    if (outVar != definedVariable &&
+      find(interferenceGraph[definedVariable].begin(),
+            interferenceGraph[definedVariable].end(),
+            outVar) == interferenceGraph[definedVariable].end())
+    {
+      interferenceGraph[definedVariable].push_back(outVar);
+      interferenceGraph[outVar].push_back(definedVariable);
+    }
+    }
+  }
   }
   return interferenceGraph;
 }
@@ -1517,7 +1618,7 @@ void CFG::computeRegisterAllocation()
 {
   InstructionLivenessAnalysis liveInfo = computeLiveInfo();
   map<shared_ptr<Symbol>, vector<shared_ptr<Symbol>>>
-      interferenceGraph = buildInterferenceGraph(liveInfo);
+    interferenceGraph = buildInterferenceGraph(liveInfo);
   RegisterAllocationSpillData spillInfo = findColorOrder(interferenceGraph, 7);
 
   registerAssignment = assignRegisters(spillInfo, interferenceGraph, 7);
