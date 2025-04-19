@@ -341,7 +341,7 @@ CodeGenVisitor::visitReturn_stmt(ifccParser::Return_stmtContext *ctx)
     if (ctx->expr() == nullptr)
     {
       string message =
-          "Non void function " + curCfg->get_name() + " should return a value";
+          "No void function " + curCfg->get_name() + " should return a value";
       VisitorErrorListener::addError(ctx, message);
       return 1;
     }
@@ -386,7 +386,7 @@ CodeGenVisitor::visitFunc_call(ifccParser::Func_callContext *ctx)
   if (it == functions.end())
   {
     string message =
-        "Function " + ctx->ID()->toString() + " has not been declared";
+        "Function " + ctx->ID()->toString() + " was not declared";
     VisitorErrorListener::addError(ctx, message);
   }
 

@@ -6,17 +6,17 @@ using namespace std;
 antlrcpp::Any
 SymbolTableVisitor::visitAssignment(ifccParser::AssignmentContext *ctx) {
   // Récupère le nom de la variable assignée
-  string varName = ctx->ID()->getText();
+  string variableName = ctx->ID()->getText();
 
   // Vérifie si la variable a déjà été déclarée
-  if (symbolTable.find(varName) != symbolTable.end()) {
-    cerr << "Error: Variable '" << varName
+  if (symbolTable.find(variableName) != symbolTable.end()) {
+    cerr << "Error: Variable '" << variableName
               << "' is declared multiple times.\n";
     exit(1); // Arrête le programme en cas d'erreur
   }
 
   // Assigne un offset pour la nouvelle variable
-  symbolTable[varName] = currentOffset;
+  symbolTable[variableName] = currentOffset;
   currentOffset -= 4; // Réduit l'offset pour la prochaine variable
   visit(ctx->expr()); // Visite l'expression associée à l'assignation
 
@@ -27,17 +27,17 @@ SymbolTableVisitor::visitAssignment(ifccParser::AssignmentContext *ctx) {
 antlrcpp::Any
 SymbolTableVisitor::visitOperand(ifccParser::OperandContext *ctx) {
   if (ctx->ID()) { // Si l'opérande est une variable
-    string varName = ctx->ID()->getText();
+    string variableName = ctx->ID()->getText();
 
     // Vérifie si la variable a été déclarée avant utilisation
-    if (symbolTable.find(varName) == symbolTable.end()) {
-      cerr << "Error: Variable '" << varName
+    if (symbolTable.find(variableName) == symbolTable.end()) {
+      cerr << "Error: Variable '" << variableName
                 << "' is used before being declared.\n";
       exit(1); // Arrête le programme en cas d'erreur
     }
 
     // Marque la variable comme utilisée
-    usedVariables.insert(varName);
+    usedVariables.insert(variableName);
   }
   return 0;
 }
@@ -75,11 +75,11 @@ antlrcpp::Any SymbolTableVisitor::visitFuncCall(ifccParser::FuncCallContext *ctx
 antlrcpp::Any SymbolTableVisitor::visitVar_decl_stmt(ifccParser::Var_decl_stmtContext *ctx) {
   for (auto member : ctx->var_decl_member()) {
     // Récupère le nom de la variable déclarée
-    string varName = member->ID()->getText();
+    string variableName = member->ID()->getText();
 
     // Vérifie si la variable est initialisée
     if (!member->expr()) {
-      cerr << "Warning: Variable '" << varName << "' is not initialized.\n";
+      cerr << "Warning: Variable '" << variableName << "' is not initialized.\n";
     }
   }
   return 0;

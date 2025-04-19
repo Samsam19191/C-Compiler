@@ -18,7 +18,7 @@ ostream &operator<<(ostream &os, const Parameter &parameter)
 {
   if (auto symbol = get_if<shared_ptr<Symbol>>(&parameter))
   {
-    os << (*symbol)->lexeme; // Affiche le lexème du symbole
+    os << (*symbol)->identifierName; // Affiche le lexème du symbole
   }
   else if (auto n = get_if<string>(&parameter))
   {
@@ -185,12 +185,12 @@ set<shared_ptr<Symbol>> IRInstr::getUsedVariables()
     break; // Pas de variables utilisées
   case IRInstr::call:
   {
-    int cnt = parameters.size();
+    int parameterCount = parameters.size();
     if (outType != Type::VOID)
     {
-      cnt--; // Ignore le dernier paramètre si c'est une valeur de retour
+      parameterCount--; // Ignore le dernier paramètre si c'est une valeur de retour
     }
-    for (int i = 1; i < cnt; i++)
+    for (int i = 1; i < parameterCount; i++)
     {
       result.insert(get<shared_ptr<Symbol>>(parameters[i])); // Ajoute les paramètres
     }
@@ -558,7 +558,7 @@ void IRInstr::generateLoadConstant(ostream &os, CFG *cfg)
 {
   // Récupère le symbole et la valeur de la constante
   auto symbol = get<shared_ptr<Symbol>>(parameters[1]);
-  auto val = get<string>(parameters[0]);
+  auto value = get<string>(parameters[0]);
   int destRegister = cfg->getRegisterIndexForSymbol(symbol);
 
   // Détermine l'instruction mov appropriée en fonction du type
@@ -567,7 +567,7 @@ void IRInstr::generateLoadConstant(ostream &os, CFG *cfg)
       (symbol->type == Type::CHAR ? registers8 : registers32);
 
   // Charge la constante dans le registre de destination
-  os << "movl $" << val << ", %" << registers32[destRegister] << endl;
+  os << "movl $" << value << ", %" << registers32[destRegister] << endl;
 
   // Si le registre de destination est temporaire, sauvegarde dans la pile
   if (destRegister == cfg->scratchRegister)
@@ -837,15 +837,15 @@ void IRInstr::generateUnaryOperation(const string &op, ostream &os, CFG *cfg)
  */
 void IRInstr::generateFunctionCall(ostream &os, CFG *cfg)
 {
-  string funcName = get<string>(parameters[0]); // Nom de la fonction appelée
-  CFG *function = cfg->get_visitor()->getFunction(funcName);
-  int paramNum = function->get_parameters_type().size(); // Nombre de paramètres
+  string functionName = get<string>(parameters[0]); // Nom de la fonction appelée
+  CFG *function = cfg->get_visitor()->getFunction(functionName);
+  int parameterCount = function->get_parameters_type().size(); // Nombre de paramètres
 
   // Aligne la pile si nécessaire
-  int val = (cfg->nextFreeSymbolIndex + 16 - 1) / 16 * 16;
-  if (val)
+  int value = (cfg->nextFreeSymbolIndex + 16 - 1) / 16 * 16;
+  if (value)
   {
-    os << "subq $" << val << ", %rsp" << endl;
+    os << "subq $" << value << ", %rsp" << endl;
   }
   // Sauvegarde les registres utilisés
   for (int i = 0; i < 8; i++)
@@ -855,7 +855,7 @@ void IRInstr::generateFunctionCall(ostream &os, CFG *cfg)
 
   // Gestion des échanges de registres pour les paramètres
   bool exchange = false;
-  if (paramNum >= 6)
+  if (parameterCount >= 6)
   {
     auto symbol8 = get<shared_ptr<Symbol>>(parameters[5]);
     auto symbol9 = get<shared_ptr<Symbol>>(parameters[6]);
@@ -866,7 +866,7 @@ void IRInstr::generateFunctionCall(ostream &os, CFG *cfg)
     }
   }
   // Empile les paramètres
-  for (int i = paramNum - 1; i >= 0; i--)
+  for (int i = parameterCount - 1; i >= 0; i--)
   {
     if ((i == 4 || i == 5) && exchange)
     {
@@ -892,7 +892,7 @@ void IRInstr::generateFunctionCall(ostream &os, CFG *cfg)
 
   auto returnVar = get<shared_ptr<Symbol>>(*parameters.rbegin());
 
-  os << "call " << funcName << endl; // Appelle la fonction
+  os << "call " << functionName << endl; // Appelle la fonction
   int paramRegister = cfg->getRegisterIndexForSymbol(returnVar);
 
   // Restaure les registres sauvegardés
@@ -901,13 +901,13 @@ void IRInstr::generateFunctionCall(ostream &os, CFG *cfg)
     os << "popq %" << registers64[7 - i] << endl;
   }
 
-  for (int i = 7; i <= paramNum; i++)
+  for (int i = 7; i <= parameterCount; i++)
   {
     os << "popq %" << registers64[cfg->scratchRegister] << endl;
   }
-  if (val)
+  if (value)
   {
-    os << "addq $" << val << ", %rsp" << endl;
+    os << "addq $" << value << ", %rsp" << endl;
   }
 
   // Récupère la valeur de retour si nécessaire
