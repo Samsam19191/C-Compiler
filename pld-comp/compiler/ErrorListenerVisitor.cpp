@@ -1,4 +1,4 @@
-#include "VisitorErrorListener.h"
+#include "ErrorListenerVisitor.h"
 
 #include "Token.h"
 #include "iostream"
@@ -6,10 +6,10 @@
 using namespace std;
 
 // Variable statique pour indiquer si une erreur a été rencontrée
-bool VisitorErrorListener::mHasError = false;
+bool ErrorListenerVisitor::mHasError = false;
 
 // Ajoute une erreur ou un avertissement avec un message, une ligne et un type d'erreur
-void VisitorErrorListener::addError(const string &message, int line,
+void ErrorListenerVisitor::addError(const string &message, int line,
                                     ErrorType errorType)
 {
   // Vérifie le type d'erreur
@@ -29,7 +29,7 @@ void VisitorErrorListener::addError(const string &message, int line,
 }
 
 // Ajoute une erreur ou un avertissement en utilisant un contexte de règle du parser
-void VisitorErrorListener::addError(antlr4::ParserRuleContext *ctx,
+void ErrorListenerVisitor::addError(antlr4::ParserRuleContext *ctx,
                                     const string &message,
                                     ErrorType errorType)
 {
@@ -38,7 +38,7 @@ void VisitorErrorListener::addError(antlr4::ParserRuleContext *ctx,
 }
 
 // Ajoute une erreur ou un avertissement avec seulement un message et un type d'erreur
-void VisitorErrorListener::addError(const string &message,
+void ErrorListenerVisitor::addError(const string &message,
                                     ErrorType errorType)
 {
   // Vérifie le type d'erreur

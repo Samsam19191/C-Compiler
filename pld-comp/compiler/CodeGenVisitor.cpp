@@ -1,7 +1,8 @@
 #include "CodeGenVisitor.h"
 #include "Type.h"
-#include "VisitorErrorListener.h"
+#include "ErrorListenerVisitor.h"
 #include "IR.h"
+#include "CFG.h"
 #include "support/Any.h"
 #include "Symbol.h"
 
@@ -22,13 +23,13 @@ CodeGenVisitor::CodeGenVisitor()
       make_shared<CFG>(Type::INT, "putchar", 0, this);
 
   // Ajout d'un paramètre "c" de type INT à la fonction putchar
-  auto symbol = putchar->add_parameter("c", Type::INT, 0);
-  symbol->used = true; // Marque le symbole comme utilisé
+  auto symbole = putchar->add_parameter("c", Type::INT, 0);
+  symbole->used = true; // Marque le symbole comme utilisé
 
   // Ajout des fonctions getchar et putchar à la liste des CFG et au dictionnaire des fonctions
-  cfgList.push_back(getchar);
+  functionCFGs.push_back(getchar);
   functions["getchar"] = getchar;
-  cfgList.push_back(putchar);
+  functionCFGs.push_back(putchar);
   functions["putchar"] = putchar;
 }
 
@@ -62,22 +63,22 @@ antlrcpp::Any CodeGenVisitor::visitProg(ifccParser::ProgContext *ctx)
 
     // Crée une nouvelle CFG pour la fonction
     int argCount = func->ID().size() - 1;
-    curCfg =
+    currentCFG =
         make_shared<CFG>(type, func->ID(0)->toString(), argCount, this);
 
     // Ajoute la CFG à la liste et au dictionnaire des fonctions
-    cfgList.push_back(curCfg);
-    functions[func->ID(0)->toString()] = curCfg;
+    functionCFGs.push_back(currentCFG);
+    functions[func->ID(0)->toString()] = currentCFG;
 
     // Visite le contenu de la fonction
     visit(func);
 
     // Nettoie la table des symboles
-    curCfg->pop_table();
+    currentCFG->pop_table();
   }
 
   // Si des erreurs ont été détectées, termine le programme
-  if (VisitorErrorListener::hasError())
+  if (ErrorListenerVisitor::hasError())
   {
     exit(1);
   }
@@ -95,9 +96,9 @@ antlrcpp::Any CodeGenVisitor::visitFunc(ifccParser::FuncContext *ctx)
   for (int i = 1; i < ctx->ID().size(); i++)
   {
     Type type = (ctx->TYPE(i)->toString() == "int" ? Type::INT : Type::CHAR);
-    auto symbol = curCfg->add_parameter(ctx->ID(i)->toString(), type,
+    auto symbole = currentCFG->add_parameter(ctx->ID(i)->toString(), type,
                                         ctx->getStart()->getLine());
-    curCfg->current_bb->add_IRInstr(IRInstr::param_decl, type, {symbol});
+    currentCFG->current_bb->add_IRInstr(IRInstr::param_decl, type, {symbole});
   }
 
   // Visite les instructions du bloc de la fonction
@@ -126,7 +127,7 @@ CodeGenVisitor::visitVar_decl_stmt(ifccParser::Var_decl_stmtContext *ctx)
   else if (ctx->TYPE()->toString() == "void")
   {
     // Erreur : une variable ne peut pas être de type void
-    VisitorErrorListener::addError(ctx, "Can't create a variable of type void");
+    ErrorListenerVisitor::addError(ctx, "Can't create a variable of type void");
   }
 
   // Parcourt les membres de la déclaration
@@ -139,16 +140,16 @@ CodeGenVisitor::visitVar_decl_stmt(ifccParser::Var_decl_stmtContext *ctx)
     if (memberCtx->expr())
     {
       // Si une expression d'initialisation est présente, l'évalue
-      shared_ptr<Symbol> symbol = getSymbolFromSymbolTableByContext(memberCtx, varName);
+      shared_ptr<Symbol> symbole = getSymbolFromSymbolTableByContext(memberCtx, varName);
       shared_ptr<Symbol> source = visit(memberCtx->expr()).as<shared_ptr<Symbol>>();
-      curCfg->current_bb->add_IRInstr(IRInstr::var_assign, Type::INT, {symbol, source});
+      currentCFG->current_bb->add_IRInstr(IRInstr::var_assign, Type::INT, {symbole, source});
     }
     else
     {
       // Sinon, initialise implicitement la variable à 0
-      shared_ptr<Symbol> symbol = getSymbolFromSymbolTableByContext(memberCtx, varName);
-      auto zero = curCfg->current_bb->add_IRInstr(IRInstr::ldconst, Type::INT, {"0"});
-      curCfg->current_bb->add_IRInstr(IRInstr::var_assign, Type::INT, {symbol, zero});
+      shared_ptr<Symbol> symbole = getSymbolFromSymbolTableByContext(memberCtx, varName);
+      auto zero = currentCFG->current_bb->add_IRInstr(IRInstr::ldconst, Type::INT, {"0"});
+      currentCFG->current_bb->add_IRInstr(IRInstr::var_assign, Type::INT, {symbole, zero});
     }
   }
   return 0;
@@ -159,10 +160,10 @@ antlrcpp::Any
 CodeGenVisitor::visitVar_assign_stmt(ifccParser::Var_assign_stmtContext *ctx)
 {
   // Récupère le symbole correspondant à l'identifiant dans la table des symboles
-  shared_ptr<Symbol> symbol = getSymbolFromSymbolTableByContext(ctx, ctx->ID()->toString());
+  shared_ptr<Symbol> symbole = getSymbolFromSymbolTableByContext(ctx, ctx->ID()->toString());
 
   // Si le symbole n'existe pas, retourne une erreur
-  if (symbol == nullptr)
+  if (symbole == nullptr)
   {
     return 1;
   }
@@ -181,7 +182,7 @@ CodeGenVisitor::visitVar_assign_stmt(ifccParser::Var_assign_stmtContext *ctx)
   if (op == "=")
   {
     // Ajoute une instruction IR pour assigner la valeur
-    curCfg->current_bb->add_IRInstr(IRInstr::var_assign, Type::INT, {symbol, source});
+    currentCFG->current_bb->add_IRInstr(IRInstr::var_assign, Type::INT, {symbole, source});
   }
   else
   {
@@ -197,10 +198,10 @@ CodeGenVisitor::visitVar_assign_stmt(ifccParser::Var_assign_stmtContext *ctx)
       instr = IRInstr::div;
 
     // Crée une variable temporaire pour stocker le résultat intermédiaire
-    shared_ptr<Symbol> temp = curCfg->create_new_tempvar(Type::INT);
-    curCfg->current_bb->add_IRInstr(IRInstr::ldvar, Type::INT, {symbol});
-    curCfg->current_bb->add_IRInstr(instr, Type::INT, {symbol, source, temp});
-    curCfg->current_bb->add_IRInstr(IRInstr::var_assign, Type::INT, {symbol, temp});
+    shared_ptr<Symbol> temp = currentCFG->create_new_tempvar(Type::INT);
+    currentCFG->current_bb->add_IRInstr(IRInstr::ldvar, Type::INT, {symbole});
+    currentCFG->current_bb->add_IRInstr(instr, Type::INT, {symbole, source, temp});
+    currentCFG->current_bb->add_IRInstr(IRInstr::var_assign, Type::INT, {symbole, temp});
   }
   return 0;
 }
@@ -215,9 +216,9 @@ antlrcpp::Any CodeGenVisitor::visitIf(ifccParser::IfContext *ctx)
   nextLabel++;
 
   // Crée les blocs de base pour la condition et les branches
-  BasicBlock *baseBlock = curCfg->current_bb;
-  BasicBlock *trueBlock = new BasicBlock(curCfg.get(), "");
-  BasicBlock *falseBlock = new BasicBlock(curCfg.get(), nextBBLabel);
+  BasicBlock *baseBlock = currentCFG->current_bb;
+  BasicBlock *trueBlock = new BasicBlock(currentCFG.get(), "");
+  BasicBlock *falseBlock = new BasicBlock(currentCFG.get(), nextBBLabel);
 
   // Ajoute une instruction IR pour comparer la condition
   baseBlock->add_IRInstr(IRInstr::cmpNZ, Type::INT, {result});
@@ -227,10 +228,10 @@ antlrcpp::Any CodeGenVisitor::visitIf(ifccParser::IfContext *ctx)
   falseBlock->exit_true = baseBlock->exit_true;
 
   // Ajoute les blocs au CFG
-  curCfg->add_bb(trueBlock);
+  currentCFG->add_bb(trueBlock);
   visit(ctx->block());
 
-  curCfg->add_bb(falseBlock);
+  currentCFG->add_bb(falseBlock);
 
   baseBlock->exit_true = trueBlock;
   baseBlock->exit_false = falseBlock;
@@ -249,10 +250,10 @@ antlrcpp::Any CodeGenVisitor::visitIf_else(ifccParser::If_elseContext *ctx)
   nextLabel++;
 
   // Crée les blocs de base pour la condition, les branches et la fin
-  BasicBlock *baseBlock = curCfg->current_bb;
-  BasicBlock *trueBlock = new BasicBlock(curCfg.get(), "");
-  BasicBlock *elseBlock = new BasicBlock(curCfg.get(), elseBBLabel);
-  BasicBlock *endBlock = new BasicBlock(curCfg.get(), endBBLabel);
+  BasicBlock *baseBlock = currentCFG->current_bb;
+  BasicBlock *trueBlock = new BasicBlock(currentCFG.get(), "");
+  BasicBlock *elseBlock = new BasicBlock(currentCFG.get(), elseBBLabel);
+  BasicBlock *endBlock = new BasicBlock(currentCFG.get(), endBBLabel);
 
   // Configure les sorties des blocs
   trueBlock->exit_true = endBlock;
@@ -263,13 +264,13 @@ antlrcpp::Any CodeGenVisitor::visitIf_else(ifccParser::If_elseContext *ctx)
   baseBlock->add_IRInstr(IRInstr::cmpNZ, Type::INT, {result});
 
   // Ajoute les blocs au CFG et visite les blocs if et else
-  curCfg->add_bb(trueBlock);
+  currentCFG->add_bb(trueBlock);
   visit(ctx->if_block);
 
-  curCfg->add_bb(elseBlock);
+  currentCFG->add_bb(elseBlock);
   visit(ctx->else_block);
 
-  curCfg->add_bb(endBlock);
+  currentCFG->add_bb(endBlock);
 
   baseBlock->exit_true = trueBlock;
   baseBlock->exit_false = elseBlock;
@@ -287,10 +288,10 @@ CodeGenVisitor::visitWhile_stmt(ifccParser::While_stmtContext *ctx)
   nextLabel++;
 
   // Crée les blocs de base pour la condition, le corps de la boucle et la fin
-  BasicBlock *baseBlock = curCfg->current_bb;
-  BasicBlock *conditionBlock = new BasicBlock(curCfg.get(), conditionBBLabel);
-  BasicBlock *stmtBlock = new BasicBlock(curCfg.get(), "");
-  BasicBlock *endBlock = new BasicBlock(curCfg.get(), endBBLabel);
+  BasicBlock *baseBlock = currentCFG->current_bb;
+  BasicBlock *conditionBlock = new BasicBlock(currentCFG.get(), conditionBBLabel);
+  BasicBlock *stmtBlock = new BasicBlock(currentCFG.get(), "");
+  BasicBlock *endBlock = new BasicBlock(currentCFG.get(), endBBLabel);
 
   // Configure les sorties des blocs
   conditionBlock->exit_true = stmtBlock;
@@ -300,15 +301,15 @@ CodeGenVisitor::visitWhile_stmt(ifccParser::While_stmtContext *ctx)
   baseBlock->exit_true = conditionBlock;
 
   // Ajoute les blocs au CFG
-  curCfg->add_bb(conditionBlock);
+  currentCFG->add_bb(conditionBlock);
   shared_ptr<Symbol> result =
       visit(ctx->expr()).as<shared_ptr<Symbol>>();
   conditionBlock->add_IRInstr(IRInstr::cmpNZ, Type::INT, {result});
 
-  curCfg->add_bb(stmtBlock);
+  currentCFG->add_bb(stmtBlock);
   visit(ctx->block());
 
-  curCfg->add_bb(endBlock);
+  currentCFG->add_bb(endBlock);
 
   return 0;
 }
@@ -317,7 +318,7 @@ CodeGenVisitor::visitWhile_stmt(ifccParser::While_stmtContext *ctx)
 antlrcpp::Any CodeGenVisitor::visitBlock(ifccParser::BlockContext *ctx)
 {
   // Pousse une nouvelle table des symboles pour le bloc
-  curCfg->push_table();
+  currentCFG->push_table();
   
   // Parcourt toutes les instructions du bloc
   for (ifccParser::StmtContext *stmt : ctx->stmt())
@@ -326,7 +327,7 @@ antlrcpp::Any CodeGenVisitor::visitBlock(ifccParser::BlockContext *ctx)
   }
 
   // Retire la table des symboles à la fin du bloc
-  curCfg->pop_table();
+  currentCFG->pop_table();
   return 0;
 }
 
@@ -335,21 +336,21 @@ antlrcpp::Any
 CodeGenVisitor::visitReturn_stmt(ifccParser::Return_stmtContext *ctx)
 {
   // Vérifie si la fonction a un type de retour non void
-  if (curCfg->get_return_type() != Type::VOID)
+  if (currentCFG->get_return_type() != Type::VOID)
   {
     // Si une expression de retour est absente, signale une erreur
     if (ctx->expr() == nullptr)
     {
       string message =
-          "No void function " + curCfg->get_name() + " should return a value";
-      VisitorErrorListener::addError(ctx, message);
+          "No void function " + currentCFG->get_name() + " should return a value";
+      ErrorListenerVisitor::addError(ctx, message);
       return 1;
     }
     // Évalue l'expression de retour
     shared_ptr<Symbol> val =
         visit(ctx->expr()).as<shared_ptr<Symbol>>();
     // Ajoute une instruction IR pour le retour
-    curCfg->current_bb->add_IRInstr(IRInstr::ret, curCfg->get_return_type(),
+    currentCFG->current_bb->add_IRInstr(IRInstr::ret, currentCFG->get_return_type(),
                                     {val});
   }
   else
@@ -358,12 +359,12 @@ CodeGenVisitor::visitReturn_stmt(ifccParser::Return_stmtContext *ctx)
     if (ctx->expr() != nullptr)
     {
       string message =
-          "Void function " + curCfg->get_name() + " should not return a value";
-      VisitorErrorListener::addError(ctx, message);
+          "Void function " + currentCFG->get_name() + " should not return a value";
+      ErrorListenerVisitor::addError(ctx, message);
       return 1;
     }
     // Ajoute une instruction IR pour le retour sans valeur
-    curCfg->current_bb->add_IRInstr(IRInstr::ret, curCfg->get_return_type(),
+    currentCFG->current_bb->add_IRInstr(IRInstr::ret, currentCFG->get_return_type(),
                                     {});
   }
 
@@ -387,7 +388,7 @@ CodeGenVisitor::visitFunc_call(ifccParser::Func_callContext *ctx)
   {
     string message =
         "Function " + ctx->ID()->toString() + " was not declared";
-    VisitorErrorListener::addError(ctx, message);
+    ErrorListenerVisitor::addError(ctx, message);
   }
 
   auto funcCfg = it->second;
@@ -400,23 +401,23 @@ CodeGenVisitor::visitFunc_call(ifccParser::Func_callContext *ctx)
                      to_string(funcCfg->get_parameters_type().size()) +
                      " but found " + to_string(ctx->expr().size()) +
                      " instead";
-    VisitorErrorListener::addError(ctx, message);
+    ErrorListenerVisitor::addError(ctx, message);
   }
 
   // Prépare les paramètres pour l'appel de fonction
   vector<Parameter> params = {ctx->ID()->toString()};
   for (int i = 0; i < funcCfg->get_parameters_type().size(); i++)
   {
-    shared_ptr<Symbol> symbol =
+    shared_ptr<Symbol> symbole =
         visit(ctx->expr(i)).as<shared_ptr<Symbol>>();
-    params.push_back(symbol);
+    params.push_back(symbole);
     // Ajoute une instruction IR pour chaque paramètre
-    curCfg->current_bb->add_IRInstr(
-        IRInstr::param, funcCfg->get_parameters_type()[i].type, {symbol});
+    currentCFG->current_bb->add_IRInstr(
+        IRInstr::param, funcCfg->get_parameters_type()[i].type, {symbole});
   }
 
   // Ajoute une instruction IR pour l'appel de fonction
-  return curCfg->current_bb->add_IRInstr(IRInstr::call,
+  return currentCFG->current_bb->add_IRInstr(IRInstr::call,
                                          funcCfg->get_return_type(), params);
 }
 
@@ -445,7 +446,7 @@ antlrcpp::Any CodeGenVisitor::visitMultdiv(ifccParser::MultdivContext *ctx)
       visit(ctx->expr(1)).as<shared_ptr<Symbol>>();
 
   // Ajoute une instruction IR pour l'opération
-  return curCfg->current_bb->add_IRInstr(instr, Type::INT, {leftVal, rightVal});
+  return currentCFG->current_bb->add_IRInstr(instr, Type::INT, {leftVal, rightVal});
 }
 
 // Visite du nœud Addsub pour gérer les opérations d'addition et de soustraction
@@ -464,12 +465,12 @@ antlrcpp::Any CodeGenVisitor::visitAddsub(ifccParser::AddsubContext *ctx)
   // Vérifie si les opérandes sont valides
   if (leftVal == nullptr || rightVal == nullptr)
   {
-    VisitorErrorListener::addError(
+    ErrorListenerVisitor::addError(
         ctx, "Invalid operation with function returning void");
   }
 
   // Ajoute une instruction IR pour l'opération
-  return curCfg->current_bb->add_IRInstr(instr, Type::INT, {leftVal, rightVal});
+  return currentCFG->current_bb->add_IRInstr(instr, Type::INT, {leftVal, rightVal});
 }
 
 // Visite du nœud Cmp pour gérer les comparaisons (<, <=, >, >=)
@@ -503,12 +504,12 @@ antlrcpp::Any CodeGenVisitor::visitCmp(ifccParser::CmpContext *ctx)
   // Vérifie si les opérandes sont valides
   if (leftVal == nullptr || rightVal == nullptr)
   {
-    VisitorErrorListener::addError(
+    ErrorListenerVisitor::addError(
         ctx, "Invalid operation with function returning void");
   }
 
   // Ajoute une instruction IR pour la comparaison
-  return curCfg->current_bb->add_IRInstr(instr, Type::INT, {leftVal, rightVal});
+  return currentCFG->current_bb->add_IRInstr(instr, Type::INT, {leftVal, rightVal});
 }
 
 // Visite du nœud Eq pour gérer les comparaisons d'égalité (==, !=)
@@ -527,12 +528,12 @@ antlrcpp::Any CodeGenVisitor::visitEq(ifccParser::EqContext *ctx)
   // Vérifie si les opérandes sont valides
   if (leftVal == nullptr || rightVal == nullptr)
   {
-    VisitorErrorListener::addError(
+    ErrorListenerVisitor::addError(
         ctx, "Invalid operation with function returning void");
   }
 
   // Ajoute une instruction IR pour la comparaison
-  return curCfg->current_bb->add_IRInstr(instr, Type::INT, {leftVal, rightVal});
+  return currentCFG->current_bb->add_IRInstr(instr, Type::INT, {leftVal, rightVal});
 }
 
 // Visite du nœud Val pour gérer les valeurs (identifiants, littéraux entiers ou caractères)
@@ -542,17 +543,17 @@ antlrcpp::Any CodeGenVisitor::visitVal(ifccParser::ValContext *ctx)
   // Si c'est un identifiant, charge la variable
   if (ctx->ID() != nullptr)
   {
-    shared_ptr<Symbol> symbol = getSymbolFromSymbolTableByContext(ctx, ctx->ID()->toString());
-    if (symbol != nullptr)
+    shared_ptr<Symbol> symbole = getSymbolFromSymbolTableByContext(ctx, ctx->ID()->toString());
+    if (symbole != nullptr)
     {
       source =
-          curCfg->current_bb->add_IRInstr(IRInstr::ldvar, Type::INT, {symbol});
+          currentCFG->current_bb->add_IRInstr(IRInstr::ldvar, Type::INT, {symbole});
     }
   }
   // Si c'est un littéral entier, charge la constante
   else if (ctx->INTEGER_LITERAL() != nullptr)
   {
-    source = curCfg->current_bb->add_IRInstr(
+    source = currentCFG->current_bb->add_IRInstr(
         IRInstr::ldconst, Type::INT, {ctx->INTEGER_LITERAL()->toString()});
   }
   // Si c'est un littéral caractère, charge la constante
@@ -561,7 +562,7 @@ antlrcpp::Any CodeGenVisitor::visitVal(ifccParser::ValContext *ctx)
     string val =
         to_string(static_cast<int>(ctx->CHAR_LITERAL()->toString()[1]));
     source =
-        curCfg->current_bb->add_IRInstr(IRInstr::ldconst, Type::CHAR, {val});
+        currentCFG->current_bb->add_IRInstr(IRInstr::ldconst, Type::CHAR, {val});
   }
 
   return source;
@@ -571,11 +572,11 @@ antlrcpp::Any CodeGenVisitor::visitVal(ifccParser::ValContext *ctx)
 bool CodeGenVisitor::addSymbolToSymbolTableFromContext(antlr4::ParserRuleContext *ctx,
                                                        const string &id, Type type)
 {
-  bool result = curCfg->add_symbol(id, type, ctx->getStart()->getLine());
+  bool result = currentCFG->add_symbol(id, type, ctx->getStart()->getLine());
   if (!result)
   {
     string error = "The variable " + id + " has already been declared";
-    VisitorErrorListener::addError(ctx, error, ErrorType::Error);
+    ErrorListenerVisitor::addError(ctx, error, ErrorType::Error);
   }
   return result;
 }
@@ -585,16 +586,16 @@ shared_ptr<Symbol>
 CodeGenVisitor::getSymbolFromSymbolTableByContext(antlr4::ParserRuleContext *ctx,
                                                   const string &id)
 {
-  shared_ptr<Symbol> symbol = curCfg->get_symbol(id);
-  if (symbol == nullptr)
+  shared_ptr<Symbol> symbole = currentCFG->get_symbol(id);
+  if (symbole == nullptr)
   {
     const string error = "Symbol not found: " + id;
-    VisitorErrorListener::addError(ctx, error, ErrorType::Error);
+    ErrorListenerVisitor::addError(ctx, error, ErrorType::Error);
     return nullptr;
   }
 
-  symbol->used = true;
-  return symbol;
+  symbole->used = true;
+  return symbole;
 }
 
 // Visite du nœud B_and pour gérer les opérations binaires AND (&)
@@ -607,7 +608,7 @@ antlrcpp::Any CodeGenVisitor::visitB_and(ifccParser::B_andContext *ctx)
       visit(ctx->expr(1)).as<shared_ptr<Symbol>>();
 
   // Ajoute une instruction IR pour l'opération AND
-  return curCfg->current_bb->add_IRInstr(IRInstr::b_and, Type::INT,
+  return currentCFG->current_bb->add_IRInstr(IRInstr::b_and, Type::INT,
                                          {leftVal, rightVal});
 }
 
@@ -623,12 +624,12 @@ antlrcpp::Any CodeGenVisitor::visitB_or(ifccParser::B_orContext *ctx)
   // Vérifie si les opérandes sont valides
   if (leftVal == nullptr || rightVal == nullptr)
   {
-    VisitorErrorListener::addError(
+    ErrorListenerVisitor::addError(
         ctx, "Invalid operation with function returning void");
   }
 
   // Ajoute une instruction IR pour l'opération OR
-  return curCfg->current_bb->add_IRInstr(IRInstr::b_or, Type::INT,
+  return currentCFG->current_bb->add_IRInstr(IRInstr::b_or, Type::INT,
                                          {leftVal, rightVal});
 }
 
@@ -644,12 +645,12 @@ antlrcpp::Any CodeGenVisitor::visitB_xor(ifccParser::B_xorContext *ctx)
   // Vérifie si les opérandes sont valides
   if (leftVal == nullptr || rightVal == nullptr)
   {
-    VisitorErrorListener::addError(
+    ErrorListenerVisitor::addError(
         ctx, "Invalid operation with function returning void");
   }
 
   // Ajoute une instruction IR pour l'opération XOR
-  return curCfg->current_bb->add_IRInstr(IRInstr::b_xor, Type::INT,
+  return currentCFG->current_bb->add_IRInstr(IRInstr::b_xor, Type::INT,
                                          {leftVal, rightVal});
 }
 
@@ -666,31 +667,31 @@ antlrcpp::Any CodeGenVisitor::visitUnaryOp(ifccParser::UnaryOpContext *ctx)
   {
     // Négation arithmétique
     instr = IRInstr::neg;
-    return curCfg->current_bb->add_IRInstr(instr, Type::INT, {val});
+    return currentCFG->current_bb->add_IRInstr(instr, Type::INT, {val});
   }
   else if (ctx->op->getText() == "~")
   {
     // Négation binaire
     instr = IRInstr::not_;
-    return curCfg->current_bb->add_IRInstr(instr, Type::INT, {val});
+    return currentCFG->current_bb->add_IRInstr(instr, Type::INT, {val});
   }
   else if (ctx->op->getText() == "!")
   {
     // Négation logique
     instr = IRInstr::lnot;
-    return curCfg->current_bb->add_IRInstr(instr, Type::INT, {val});
+    return currentCFG->current_bb->add_IRInstr(instr, Type::INT, {val});
   }
   else if (ctx->op->getText() == "++")
   {
     // Incrémentation
     instr = IRInstr::inc;
-    return curCfg->current_bb->add_IRInstr(instr, Type::INT, {val});
+    return currentCFG->current_bb->add_IRInstr(instr, Type::INT, {val});
   }
   else if (ctx->op->getText() == "--")
   {
     // Décrémentation
     instr = IRInstr::dec;
-    return curCfg->current_bb->add_IRInstr(instr, Type::INT, {val});
+    return currentCFG->current_bb->add_IRInstr(instr, Type::INT, {val});
   }
   else if (ctx->op->getText() == "+")
   {
@@ -704,7 +705,7 @@ antlrcpp::Any CodeGenVisitor::visitUnaryOp(ifccParser::UnaryOpContext *ctx)
 
 antlrcpp::Any CodeGenVisitor::visitPostIncDec(ifccParser::PostIncDecContext *ctx)
 {
-  shared_ptr<Symbol> symbol = getSymbolFromSymbolTableByContext(ctx, ctx->ID()->getText());
+  shared_ptr<Symbol> symbole = getSymbolFromSymbolTableByContext(ctx, ctx->ID()->getText());
 
   // Récupérer l'opérateur à partir du texte brut
   std::string fullText = ctx->getText();
@@ -713,19 +714,19 @@ antlrcpp::Any CodeGenVisitor::visitPostIncDec(ifccParser::PostIncDecContext *ctx
   IRInstr::Operation operation = (op == "++") ? IRInstr::inc : IRInstr::dec;
 
   // Sauvegarde de la valeur avant incrémentation
-  shared_ptr<Symbol> temp = curCfg->create_new_tempvar(Type::INT);
-  curCfg->current_bb->add_IRInstr(IRInstr::ldvar, Type::INT, {symbol});
-  curCfg->current_bb->add_IRInstr(IRInstr::var_assign, Type::INT, {temp, symbol});
+  shared_ptr<Symbol> temp = currentCFG->create_new_tempvar(Type::INT);
+  currentCFG->current_bb->add_IRInstr(IRInstr::ldvar, Type::INT, {symbole});
+  currentCFG->current_bb->add_IRInstr(IRInstr::var_assign, Type::INT, {temp, symbole});
 
   // Incrémentation
-  curCfg->current_bb->add_IRInstr(operation, Type::INT, {symbol});
+  currentCFG->current_bb->add_IRInstr(operation, Type::INT, {symbole});
 
   return temp;
 }
 
 antlrcpp::Any CodeGenVisitor::visitPreIncDec(ifccParser::PreIncDecContext *ctx)
 {
-  shared_ptr<Symbol> symbol = getSymbolFromSymbolTableByContext(ctx, ctx->ID()->getText());
+  shared_ptr<Symbol> symbole = getSymbolFromSymbolTableByContext(ctx, ctx->ID()->getText());
 
   // Récupérer l'opérateur à partir du texte brut
   std::string fullText = ctx->getText();
@@ -734,9 +735,9 @@ antlrcpp::Any CodeGenVisitor::visitPreIncDec(ifccParser::PreIncDecContext *ctx)
   IRInstr::Operation operation = (op == "++") ? IRInstr::inc : IRInstr::dec;
 
   // Incrémentation avant utilisation
-  curCfg->current_bb->add_IRInstr(operation, Type::INT, {symbol});
+  currentCFG->current_bb->add_IRInstr(operation, Type::INT, {symbole});
 
-  return symbol;
+  return symbole;
 }
 
 antlrcpp::Any CodeGenVisitor::visitLogicalOr(ifccParser::LogicalOrContext *ctx) {
@@ -744,24 +745,24 @@ antlrcpp::Any CodeGenVisitor::visitLogicalOr(ifccParser::LogicalOrContext *ctx) 
   string endLabel = ".L" + to_string(nextLabel++);
   
   shared_ptr<Symbol> left = visit(ctx->expr(0)).as<shared_ptr<Symbol>>();
-  shared_ptr<Symbol> result = curCfg->create_new_tempvar(Type::INT);
+  shared_ptr<Symbol> result = currentCFG->create_new_tempvar(Type::INT);
   
   // Évaluation paresseuse - si gauche est vrai, résultat est vrai
-  curCfg->current_bb->add_IRInstr(IRInstr::cmpNZ, Type::INT, {left});
-  curCfg->current_bb->add_IRInstr(IRInstr::ldconst, Type::INT, {"1"});
-  curCfg->current_bb->add_IRInstr(IRInstr::var_assign, Type::INT, {result, left});
+  currentCFG->current_bb->add_IRInstr(IRInstr::cmpNZ, Type::INT, {left});
+  currentCFG->current_bb->add_IRInstr(IRInstr::ldconst, Type::INT, {"1"});
+  currentCFG->current_bb->add_IRInstr(IRInstr::var_assign, Type::INT, {result, left});
   
-  BasicBlock* falseBB = new BasicBlock(curCfg.get(), falseLabel);
-  BasicBlock* endBB = new BasicBlock(curCfg.get(), endLabel);
+  BasicBlock* falseBB = new BasicBlock(currentCFG.get(), falseLabel);
+  BasicBlock* endBB = new BasicBlock(currentCFG.get(), endLabel);
   
-  curCfg->current_bb->exit_false = falseBB;
-  curCfg->current_bb->exit_true = endBB;
+  currentCFG->current_bb->exit_false = falseBB;
+  currentCFG->current_bb->exit_true = endBB;
   
-  curCfg->add_bb(falseBB);
+  currentCFG->add_bb(falseBB);
   shared_ptr<Symbol> right = visit(ctx->expr(1)).as<shared_ptr<Symbol>>();
-  curCfg->current_bb->add_IRInstr(IRInstr::var_assign, Type::INT, {result, right});
+  currentCFG->current_bb->add_IRInstr(IRInstr::var_assign, Type::INT, {result, right});
   
-  curCfg->add_bb(endBB);
+  currentCFG->add_bb(endBB);
   return result;
 }
 
@@ -770,23 +771,23 @@ antlrcpp::Any CodeGenVisitor::visitLogicalAnd(ifccParser::LogicalAndContext *ctx
   string endLabel = ".L" + to_string(nextLabel++);
   
   shared_ptr<Symbol> left = visit(ctx->expr(0)).as<shared_ptr<Symbol>>();
-  shared_ptr<Symbol> result = curCfg->create_new_tempvar(Type::INT);
+  shared_ptr<Symbol> result = currentCFG->create_new_tempvar(Type::INT);
   
   // Évaluation paresseuse - si gauche est faux, résultat est faux
-  curCfg->current_bb->add_IRInstr(IRInstr::cmpNZ, Type::INT, {left});
-  curCfg->current_bb->add_IRInstr(IRInstr::ldconst, Type::INT, {"0"});
-  curCfg->current_bb->add_IRInstr(IRInstr::var_assign, Type::INT, {result, left});
+  currentCFG->current_bb->add_IRInstr(IRInstr::cmpNZ, Type::INT, {left});
+  currentCFG->current_bb->add_IRInstr(IRInstr::ldconst, Type::INT, {"0"});
+  currentCFG->current_bb->add_IRInstr(IRInstr::var_assign, Type::INT, {result, left});
   
-  BasicBlock* trueBB = new BasicBlock(curCfg.get(), trueLabel);
-  BasicBlock* endBB = new BasicBlock(curCfg.get(), endLabel);
+  BasicBlock* trueBB = new BasicBlock(currentCFG.get(), trueLabel);
+  BasicBlock* endBB = new BasicBlock(currentCFG.get(), endLabel);
   
-  curCfg->current_bb->exit_true = trueBB;
-  curCfg->current_bb->exit_false = endBB;
+  currentCFG->current_bb->exit_true = trueBB;
+  currentCFG->current_bb->exit_false = endBB;
   
-  curCfg->add_bb(trueBB);
+  currentCFG->add_bb(trueBB);
   shared_ptr<Symbol> right = visit(ctx->expr(1)).as<shared_ptr<Symbol>>();
-  curCfg->current_bb->add_IRInstr(IRInstr::var_assign, Type::INT, {result, right});
+  currentCFG->current_bb->add_IRInstr(IRInstr::var_assign, Type::INT, {result, right});
   
-  curCfg->add_bb(endBB);
+  currentCFG->add_bb(endBB);
   return result;
 }

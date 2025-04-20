@@ -19,9 +19,11 @@ OBJECTS=build/ifccBaseVisitor.o \
 	build/ifccParser.o \
 	build/main.o \
 	build/CodeGenVisitor.o \
-	build/VisitorErrorListener.o \
+	build/ErrorListenerVisitor.o \
 	build/Type.o \
-	build/IR.o
+	build/IR.o \
+	build/BasicBlock.o \
+	build/CFG.o
 
 ifcc: $(OBJECTS)
 	@mkdir -p build

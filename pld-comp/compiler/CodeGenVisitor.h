@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ParserRuleContext.h"
+#include "CFG.h"
 #include "Symbol.h"
 #include "antlr4-runtime.h"
 #include "generated/ifccBaseVisitor.h"
@@ -99,7 +100,7 @@ public:
    * @brief Accès à la liste des CFG (Control Flow Graphs) générés pour chaque fonction
    */
   const vector<shared_ptr<CFG>> &getCfgList() const {
-    return cfgList;
+    return functionCFGs;
   }
 
   /**
@@ -113,13 +114,13 @@ private:
 
     // Liste des CFG générés pour chaque fonction rencontrée
 
-  vector<shared_ptr<CFG>> cfgList;
+  vector<shared_ptr<CFG>> functionCFGs;
     // Map des fonctions par nom, associées à leur CFG
 
   map<string, shared_ptr<CFG>> functions;
     // CFG courant, modifié à chaque nouvelle fonction rencontrée
 
-  shared_ptr<CFG> curCfg;
+  shared_ptr<CFG> currentCFG;
   // Buffer interne pour stocker du code assembleur éventuel
 
   stringstream assembly;

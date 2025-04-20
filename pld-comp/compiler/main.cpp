@@ -9,6 +9,9 @@
 #include "generated/ifccParser.h"
 
 #include "CodeGenVisitor.h"
+#include "CFG.h"
+#include "BasicBlock.h"
+#include "IR.h"
 
 using namespace antlr4;
 using namespace std;
@@ -55,8 +58,8 @@ int main(int argn, const char **argv) {
   v.visit(tree); // Visite l'arbre syntaxique
 
   // Récupère la liste des CFG (Control Flow Graphs) générés
-  auto cfgList = v.getCfgList();
-  for (auto cfg : cfgList) {
+  auto functionCFGs = v.getCfgList();
+  for (auto cfg : functionCFGs) {
     // Ignore les fonctions spéciales "putchar" et "getchar"
     if (cfg->get_name() == "putchar" || cfg->get_name() == "getchar") {
       continue;
@@ -69,8 +72,8 @@ int main(int argn, const char **argv) {
 
     // Affiche les instructions de chaque bloc du CFG
     for (auto block : cfg->getBlocks()) {
-      for (auto instr : block->instrs) {
-        cerr << instr << endl;
+      for (auto instruction : block->instructions) {
+        cerr << instruction << endl;
       }
     }
   }

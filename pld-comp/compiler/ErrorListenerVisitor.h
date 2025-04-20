@@ -10,7 +10,7 @@ enum class ErrorType
   Warning
 };
 
-class VisitorErrorListener
+class ErrorListenerVisitor
 {
 public:
   static inline bool hasError() { return mHasError; }
